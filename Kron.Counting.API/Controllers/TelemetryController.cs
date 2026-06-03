@@ -103,6 +103,7 @@ public sealed class TelemetryController : ControllerBase
                 Console.WriteLine("COMMAND DETECTED");
                 Console.WriteLine("--------------------------------");
                 Console.WriteLine($"CMD = {cmd}");
+
                 if (cmd == "cache")
                 {
                     var device =
@@ -124,47 +125,79 @@ public sealed class TelemetryController : ControllerBase
                                 Console.WriteLine();
                                 Console.WriteLine("PARSED RECORD");
                                 Console.WriteLine("--------------------------------");
-                                Console.WriteLine(
-                                    $"Timestamp : {parsed.TimestampUtc}");
+                                Console.WriteLine($"Timestamp : {parsed.TimestampUtc}");
+                                Console.WriteLine($"IN        : {parsed.PeopleIn}");
+                                Console.WriteLine($"OUT       : {parsed.PeopleOut}");
 
-                                Console.WriteLine(
-                                    $"IN        : {parsed.PeopleIn}");
+                                var reading = new DeviceReading
+                                {
+                                    DeviceId = device.Id,
 
-                                Console.WriteLine(
-                                    $"OUT       : {parsed.PeopleOut}");
+                                    ReadingTimestampUtc =
+                                        parsed.TimestampUtc,
 
-                                await _deviceReadingRepository
-                                    .CreateAsync(
-                                        new DeviceReading
-                                        {
-                                            DeviceId =
-                                                device.Id,
+                                    PeopleIn =
+                                        parsed.PeopleIn,
 
-                                            ReadingTimestampUtc =
-                                                parsed.TimestampUtc,
+                                    PeopleOut =
+                                        parsed.PeopleOut,
 
-                                            PeopleIn =
-                                                parsed.PeopleIn,
+                                    Occupancy =
+                                        Math.Max(
+                                            0,
+                                            parsed.PeopleIn -
+                                            parsed.PeopleOut),
 
-                                            PeopleOut =
-                                                parsed.PeopleOut,
+                                    RawPayloadJson =
+                                        parsed.RawData,
 
-                                            Occupancy =
-                                                Math.Max(
-                                                    0,
-                                                    parsed.PeopleIn -
-                                                    parsed.PeopleOut),
+                                    CreatedAtUtc =
+                                        DateTime.UtcNow
+                                };
 
-                                            RawPayloadJson =
-                                                parsed.RawData,
+                                var exists =
+                                    await _deviceReadingRepository
+                                        .ExistsAsync(
+                                            reading.DeviceId,
+                                            reading.ReadingTimestampUtc,
+                                            reading.PeopleIn,
+                                            reading.PeopleOut);
 
-                                            CreatedAtUtc =
-                                                DateTime.UtcNow
-                                        },
-                                        cancellationToken);
+                                if (exists)
+                                {
+                                    Console.WriteLine();
+                                    Console.WriteLine("DUPLICATE READING");
+                                    Console.WriteLine("--------------------------------");
+                                    Console.WriteLine(
+                                        $"{reading.ReadingTimestampUtc:yyyy-MM-dd HH:mm:ss} | " +
+                                        $"IN={reading.PeopleIn} | " +
+                                        $"OUT={reading.PeopleOut}");
 
-                                Console.WriteLine(
-                                    "DEVICE READING SAVED");
+                                    continue;
+                                }
+
+                                try
+                                {
+                                    await _deviceReadingRepository
+                                        .CreateAsync(
+                                            reading,
+                                            cancellationToken);
+
+                                    Console.WriteLine();
+                                    Console.WriteLine("DEVICE READING SAVED");
+                                    Console.WriteLine("--------------------------------");
+                                    Console.WriteLine(
+                                        $"{reading.ReadingTimestampUtc:yyyy-MM-dd HH:mm:ss} | " +
+                                        $"IN={reading.PeopleIn} | " +
+                                        $"OUT={reading.PeopleOut}");
+                                }
+                                catch (Exception ex)
+                                {
+                                    Console.WriteLine();
+                                    Console.WriteLine("DEVICE READING ERROR");
+                                    Console.WriteLine("--------------------------------");
+                                    Console.WriteLine(ex.Message);
+                                }
                             }
                             catch (Exception ex)
                             {
@@ -176,6 +209,7 @@ public sealed class TelemetryController : ControllerBase
                         }
                     }
                 }
+
                 if (form.TryGetValue("count", out var count))
                 {
                     Console.WriteLine($"CACHE COUNT = {count}");
@@ -187,27 +221,10 @@ public sealed class TelemetryController : ControllerBase
                     Console.WriteLine("--------------------------------");
                     Console.WriteLine(data);
                 }
+
                 Console.WriteLine();
             }
         }
-
-        Request.Body.Position = 0;
-
-        using var reader = new StreamReader(
-            Request.Body,
-            Encoding.UTF8,
-            leaveOpen: true);
-
-        var rawBody =
-            await reader.ReadToEndAsync(
-                cancellationToken);
-
-        Request.Body.Position = 0;
-
-        sb.AppendLine("RAW BODY");
-        sb.AppendLine("--------------------------------");
-        sb.AppendLine(rawBody);
-        sb.AppendLine();
 
         if (!string.IsNullOrWhiteSpace(ip))
         {
@@ -309,9 +326,6 @@ public sealed class TelemetryController : ControllerBase
         {
         }
 
-        // IMPORTANTE
-        // Respuesta ultra simple para firmware embebido
-
         string responseBody = "result=";
 
         try
@@ -384,6 +398,25 @@ public sealed class TelemetryController : ControllerBase
                             $"result={resultHex}";
                     }
                 }
+
+                if (form.TryGetValue("cmd", out var cmdCache) &&
+                    cmdCache == "cache" &&
+                    form.TryGetValue("flag", out var cacheFlag))
+                                {
+                                    var cacheResult =
+                                        Hpc015sCacheProtocol
+                                            .BuildCacheSuccessResponseHex(
+                                                cacheFlag.ToString());
+
+                                    responseBody =
+                                        $"result={cacheResult}";
+
+                                    Console.WriteLine();
+                                    Console.WriteLine("CACHE ACK SENT");
+                                    Console.WriteLine("--------------------------------");
+                                    Console.WriteLine(responseBody);
+                                    Console.WriteLine();
+                                }
             }
         }
         catch (Exception ex)
@@ -395,8 +428,14 @@ public sealed class TelemetryController : ControllerBase
             Console.WriteLine();
         }
 
+        Console.WriteLine();
+        Console.WriteLine("RESPONSE SENT");
+        Console.WriteLine("--------------------------------");
+        Console.WriteLine(responseBody);
+        Console.WriteLine();
+
         return Content(
             responseBody,
             "text/plain");
-        }
     }
+}

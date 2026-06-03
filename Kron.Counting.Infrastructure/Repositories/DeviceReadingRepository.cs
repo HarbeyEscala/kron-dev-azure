@@ -13,6 +13,36 @@ public sealed class DeviceReadingRepository : IDeviceReadingRepository
         _connectionFactory = connectionFactory;
     }
 
+    public async Task<bool> ExistsAsync(
+        Guid deviceId,
+        DateTime readingTimestampUtc,
+        int peopleIn,
+        int peopleOut)
+        {
+            const string sql = """
+            SELECT TOP 1 1
+            FROM dbo.DeviceReadings
+            WHERE DeviceId = @DeviceId
+              AND ReadingTimestampUtc = @ReadingTimestampUtc
+              AND PeopleIn = @PeopleIn
+              AND PeopleOut = @PeopleOut
+        """;
+
+            using var connection = _connectionFactory.CreateConnection();
+
+            var result = await connection.QueryFirstOrDefaultAsync<int?>(
+                sql,
+                new
+                {
+                    DeviceId = deviceId,
+                    ReadingTimestampUtc = readingTimestampUtc,
+                    PeopleIn = peopleIn,
+                    PeopleOut = peopleOut
+                });
+
+            return result.HasValue;
+        }
+
     public async Task<long> CreateAsync(
         DeviceReading reading,
         CancellationToken cancellationToken = default)

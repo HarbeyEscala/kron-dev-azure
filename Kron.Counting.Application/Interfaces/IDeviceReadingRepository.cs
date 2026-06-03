@@ -11,4 +11,9 @@ public interface IDeviceReadingRepository
         DateTime? fromUtc = null,
         DateTime? toUtc = null,
         CancellationToken cancellationToken = default);
+    Task<bool> ExistsAsync(
+        Guid deviceId,
+        DateTime readingTimestampUtc,
+        int peopleIn,
+        int peopleOut);
 }
