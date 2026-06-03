@@ -39,7 +39,7 @@ builder.Services.AddCors(options =>
                 .AllowAnyMethod();
         });
 });
-
+builder.Services.AddHttpClient();
 #endregion
 
 #region Migrations

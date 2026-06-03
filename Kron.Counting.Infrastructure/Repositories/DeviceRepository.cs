@@ -25,6 +25,7 @@ public sealed class DeviceRepository : IDeviceRepository
                 Name,
                 DeviceType,
                 ApiKey,
+                IpAddress,
                 FirmwareVersion,
                 LastSeenAtUtc,
                 IsOnline,
@@ -58,6 +59,7 @@ public sealed class DeviceRepository : IDeviceRepository
                 Name,
                 DeviceType,
                 ApiKey,
+                IpAddress,
                 FirmwareVersion,
                 LastSeenAtUtc,
                 IsOnline,
@@ -90,6 +92,7 @@ public sealed class DeviceRepository : IDeviceRepository
                 Name,
                 DeviceType,
                 ApiKey,
+                IpAddress,
                 FirmwareVersion,
                 LastSeenAtUtc,
                 IsOnline,
@@ -110,6 +113,42 @@ public sealed class DeviceRepository : IDeviceRepository
             new { ApiKey = apiKey });
     }
 
+    public async Task<Device?> GetByIpAddressAsync(
+        string ipAddress,
+        CancellationToken cancellationToken = default)
+        {
+            const string sql = """
+            SELECT
+                Id,
+                StoreId,
+                SerialNumber,
+                Name,
+                DeviceType,
+                ApiKey,
+                IpAddress,
+                FirmwareVersion,
+                LastSeenAtUtc,
+                IsOnline,
+                IsActive,
+                IsDeleted,
+                CreatedAtUtc,
+                UpdatedAtUtc,
+                DeletedAtUtc
+            FROM dbo.Devices
+            WHERE IpAddress = @IpAddress
+              AND IsDeleted = 0;
+        """;
+
+            using var connection = _connectionFactory.CreateConnection();
+
+            return await connection.QueryFirstOrDefaultAsync<Device>(
+                sql,
+                new
+                {
+                    IpAddress = ipAddress
+                });
+        }
+
     public async Task<Device?> GetBySerialNumberAsync(
         Guid storeId,
         string serialNumber,
@@ -123,6 +162,7 @@ public sealed class DeviceRepository : IDeviceRepository
                 Name,
                 DeviceType,
                 ApiKey,
+                IpAddress,
                 FirmwareVersion,
                 LastSeenAtUtc,
                 IsOnline,
@@ -161,6 +201,7 @@ public sealed class DeviceRepository : IDeviceRepository
                 Name,
                 DeviceType,
                 ApiKey,
+                IpAddress,
                 LastTotalIn,
                 LastTotalOut,
                 FirmwareVersion,
@@ -178,6 +219,7 @@ public sealed class DeviceRepository : IDeviceRepository
                 @Name,
                 @DeviceType,
                 @ApiKey,
+                @IpAddress,
                 @LastTotalIn,
                 @LastTotalOut,
                 @FirmwareVersion,
@@ -208,6 +250,7 @@ public sealed class DeviceRepository : IDeviceRepository
                 FirmwareVersion = @FirmwareVersion,
                 LastTotalIn = @LastTotalIn,
                 LastTotalOut = @LastTotalOut,
+                IpAddress = @IpA
                 IsActive = @IsActive,
                 UpdatedAtUtc = @UpdatedAtUtc
             WHERE Id = @Id

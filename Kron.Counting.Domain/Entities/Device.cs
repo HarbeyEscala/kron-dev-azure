@@ -14,6 +14,8 @@ public sealed class Device
 
     public string ApiKey { get; set; } = default!;
 
+    public string? IpAddress { get; set; }
+
     public string? FirmwareVersion { get; set; }
 
     public DateTime? LastSeenAtUtc { get; set; }
