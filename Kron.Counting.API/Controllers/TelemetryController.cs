@@ -2,6 +2,7 @@ using Kron.Counting.Application.Interfaces;
 using Kron.Counting.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 using System.Text;
+using Kron.Counting.Shared.Helpers;
 
 namespace Kron.Counting.API.Controllers;
 
@@ -10,14 +11,18 @@ namespace Kron.Counting.API.Controllers;
 public sealed class TelemetryController : ControllerBase
 {
     private readonly IDeviceRepository _deviceRepository;
+    private readonly IDeviceReadingRepository _deviceReadingRepository;
+    private static readonly Hpc015sGetsettingSessionManager _getsettingSessionManager = new();
 
     private const string DemoStoreId =
         "0341DF21-4D90-4E3D-B054-BCD9EC47573D";
 
     public TelemetryController(
-        IDeviceRepository deviceRepository)
+        IDeviceRepository deviceRepository,
+        IDeviceReadingRepository deviceReadingRepository)
     {
         _deviceRepository = deviceRepository;
+        _deviceReadingRepository = deviceReadingRepository;
     }
 
     [HttpGet]
@@ -98,6 +103,79 @@ public sealed class TelemetryController : ControllerBase
                 Console.WriteLine("COMMAND DETECTED");
                 Console.WriteLine("--------------------------------");
                 Console.WriteLine($"CMD = {cmd}");
+                if (cmd == "cache")
+                {
+                    var device =
+                        await _deviceRepository
+                            .GetByIpAddressAsync(
+                                ip!,
+                                cancellationToken);
+
+                    if (device is not null)
+                    {
+                        foreach (var dataRecord in form["data"])
+                        {
+                            try
+                            {
+                                var parsed =
+                                    Hp015Parser.Parse(
+                                        dataRecord!);
+
+                                Console.WriteLine();
+                                Console.WriteLine("PARSED RECORD");
+                                Console.WriteLine("--------------------------------");
+                                Console.WriteLine(
+                                    $"Timestamp : {parsed.TimestampUtc}");
+
+                                Console.WriteLine(
+                                    $"IN        : {parsed.PeopleIn}");
+
+                                Console.WriteLine(
+                                    $"OUT       : {parsed.PeopleOut}");
+
+                                await _deviceReadingRepository
+                                    .CreateAsync(
+                                        new DeviceReading
+                                        {
+                                            DeviceId =
+                                                device.Id,
+
+                                            ReadingTimestampUtc =
+                                                parsed.TimestampUtc,
+
+                                            PeopleIn =
+                                                parsed.PeopleIn,
+
+                                            PeopleOut =
+                                                parsed.PeopleOut,
+
+                                            Occupancy =
+                                                Math.Max(
+                                                    0,
+                                                    parsed.PeopleIn -
+                                                    parsed.PeopleOut),
+
+                                            RawPayloadJson =
+                                                parsed.RawData,
+
+                                            CreatedAtUtc =
+                                                DateTime.UtcNow
+                                        },
+                                        cancellationToken);
+
+                                Console.WriteLine(
+                                    "DEVICE READING SAVED");
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine();
+                                Console.WriteLine("PARSE ERROR");
+                                Console.WriteLine("--------------------------------");
+                                Console.WriteLine(ex);
+                            }
+                        }
+                    }
+                }
                 if (form.TryGetValue("count", out var count))
                 {
                     Console.WriteLine($"CACHE COUNT = {count}");
@@ -244,36 +322,74 @@ public sealed class TelemetryController : ControllerBase
                     await Request.ReadFormAsync(
                         cancellationToken);
 
-                var dictionary =
-                    form.ToDictionary(
-                        x => x.Key,
-                        x => x.Value.ToString());
+                if (form.TryGetValue("cmd", out var cmd) &&
+                    cmd == "getsetting" &&
+                    form.TryGetValue("flag", out var flag) &&
+                    form.TryGetValue("data", out var data))
+                {
+                    var request =
+                        Hpc015sGetsettingRequest.Parse(
+                            data.ToString());
 
-                using var client = new HttpClient();
+                    if (request is not null && request.Ok)
+                    {
+                        var shouldConfirm =
+                            _getsettingSessionManager.ShouldConfirm(
+                                request.Sn,
+                                request.RawDataHex);
 
-                var response =
-                    await client.PostAsync(
-                        "http://13.94.116.51:3099/",
-                        new FormUrlEncodedContent(
-                            dictionary),
-                        cancellationToken);
+                        var response =
+                            new Hpc015sGetsettingResponse(
+                                flag.ToString(),
+                                request.SnRaw)
+                            {
+                                RespondingType =
+                                    shouldConfirm
+                                        ? (byte)0x05
+                                        : (byte)0x04,
 
-                responseBody =
-                    await response.Content
-                        .ReadAsStringAsync(
-                            cancellationToken);
+                                CommandType = request.CommandType,
+                                Speed = request.Speed,
 
-                Console.WriteLine();
-                Console.WriteLine("OFFICIAL SERVER RESPONSE");
-                Console.WriteLine("--------------------------------");
-                Console.WriteLine(responseBody);
-                Console.WriteLine();
+                                RecordingCycle = 1,
+                                UploadCycle = 1,
+
+                                FixedTime = 0,
+                                Model = 0,
+
+                                DisableType =
+                                    request.DisableType,
+
+                                Year = request.Year,
+                                Month = request.Month,
+                                Day = request.Day,
+
+                                Hour = request.Hour,
+                                Minute = request.Minute,
+                                Second = request.Second,
+
+                                Week = request.Week,
+
+                                OpenHour = request.OpenHour,
+                                OpenMinute = request.OpenMinute,
+
+                                CloseHour = request.CloseHour,
+                                CloseMinute = request.CloseMinute
+                            };
+
+                        var resultHex =
+                            response.Build();
+
+                        responseBody =
+                            $"result={resultHex}";
+                    }
+                }
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine();
-            Console.WriteLine("PROXY ERROR");
+            Console.WriteLine("GETSETTING ERROR");
             Console.WriteLine("--------------------------------");
             Console.WriteLine(ex);
             Console.WriteLine();
@@ -282,5 +398,5 @@ public sealed class TelemetryController : ControllerBase
         return Content(
             responseBody,
             "text/plain");
+        }
     }
-}
