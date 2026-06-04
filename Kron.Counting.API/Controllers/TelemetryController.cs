@@ -3,6 +3,7 @@ using Kron.Counting.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 using System.Text;
 using Kron.Counting.Shared.Helpers;
+using Kron.Counting.Domain.Constants;
 
 namespace Kron.Counting.API.Controllers;
 
@@ -13,16 +14,22 @@ public sealed class TelemetryController : ControllerBase
     private readonly IDeviceRepository _deviceRepository;
     private readonly IDeviceReadingRepository _deviceReadingRepository;
     private static readonly Hpc015sGetsettingSessionManager _getsettingSessionManager = new();
+    private readonly IDevicePayloadRepository _devicePayloadRepository;
+    private readonly IDevicePayloadProcessor _devicePayloadProcessor;
 
     private const string DemoStoreId =
         "0341DF21-4D90-4E3D-B054-BCD9EC47573D";
 
     public TelemetryController(
         IDeviceRepository deviceRepository,
-        IDeviceReadingRepository deviceReadingRepository)
+        IDeviceReadingRepository deviceReadingRepository,
+        IDevicePayloadRepository devicePayloadRepository,
+        IDevicePayloadProcessor devicePayloadProcessor)
     {
         _deviceRepository = deviceRepository;
         _deviceReadingRepository = deviceReadingRepository;
+        _devicePayloadRepository = devicePayloadRepository;
+        _devicePayloadProcessor = devicePayloadProcessor;
     }
 
     [HttpGet]
@@ -118,86 +125,114 @@ public sealed class TelemetryController : ControllerBase
                         {
                             try
                             {
-                                var parsed =
-                                    Hp015Parser.Parse(
-                                        dataRecord!);
-
-                                Console.WriteLine();
-                                Console.WriteLine("PARSED RECORD");
-                                Console.WriteLine("--------------------------------");
-                                Console.WriteLine($"Timestamp : {parsed.TimestampUtc}");
-                                Console.WriteLine($"IN        : {parsed.PeopleIn}");
-                                Console.WriteLine($"OUT       : {parsed.PeopleOut}");
-
-                                var reading = new DeviceReading
+                                var payload = new DevicePayload
                                 {
+                                    Id = Guid.NewGuid(),
                                     DeviceId = device.Id,
-
-                                    ReadingTimestampUtc =
-                                        parsed.TimestampUtc,
-
-                                    PeopleIn =
-                                        parsed.PeopleIn,
-
-                                    PeopleOut =
-                                        parsed.PeopleOut,
-
-                                    Occupancy =
-                                        Math.Max(
-                                            0,
-                                            parsed.PeopleIn -
-                                            parsed.PeopleOut),
-
-                                    RawPayloadJson =
-                                        parsed.RawData,
-
-                                    CreatedAtUtc =
-                                        DateTime.UtcNow
+                                    PayloadType = "cache",
+                                    RawHex = dataRecord!,
+                                    Status = PayloadStatuses.Received,
+                                    ReceivedAtUtc = DateTime.UtcNow
                                 };
 
-                                var exists =
-                                    await _deviceReadingRepository
-                                        .ExistsAsync(
-                                            reading.DeviceId,
-                                            reading.ReadingTimestampUtc,
-                                            reading.PeopleIn,
-                                            reading.PeopleOut);
+                                await _devicePayloadRepository.InsertAsync(payload);
 
-                                if (exists)
-                                {
-                                    Console.WriteLine();
-                                    Console.WriteLine("DUPLICATE READING");
-                                    Console.WriteLine("--------------------------------");
-                                    Console.WriteLine(
-                                        $"{reading.ReadingTimestampUtc:yyyy-MM-dd HH:mm:ss} | " +
-                                        $"IN={reading.PeopleIn} | " +
-                                        $"OUT={reading.PeopleOut}");
+                                await _devicePayloadProcessor.ProcessAsync(
+                                    payload,
+                                    cancellationToken);
+                                //var parsed =
+                                //    Hp015Parser.Parse(
+                                //        dataRecord!);
 
-                                    continue;
-                                }
+                                //Console.WriteLine();
+                                //Console.WriteLine("PARSED RECORD");
+                                //Console.WriteLine("--------------------------------");
+                                //Console.WriteLine($"Timestamp : {parsed.TimestampUtc}");
+                                //Console.WriteLine($"IN        : {parsed.PeopleIn}");
+                                //Console.WriteLine($"OUT       : {parsed.PeopleOut}");
 
-                                try
-                                {
-                                    await _deviceReadingRepository
-                                        .CreateAsync(
-                                            reading,
-                                            cancellationToken);
+                                //var reading = new DeviceReading
+                                //{
+                                //    DeviceId = device.Id,
 
-                                    Console.WriteLine();
-                                    Console.WriteLine("DEVICE READING SAVED");
-                                    Console.WriteLine("--------------------------------");
-                                    Console.WriteLine(
-                                        $"{reading.ReadingTimestampUtc:yyyy-MM-dd HH:mm:ss} | " +
-                                        $"IN={reading.PeopleIn} | " +
-                                        $"OUT={reading.PeopleOut}");
-                                }
-                                catch (Exception ex)
-                                {
-                                    Console.WriteLine();
-                                    Console.WriteLine("DEVICE READING ERROR");
-                                    Console.WriteLine("--------------------------------");
-                                    Console.WriteLine(ex.Message);
-                                }
+                                //    ReadingTimestampUtc =
+                                //        parsed.TimestampUtc,
+
+                                //    PeopleIn =
+                                //        parsed.PeopleIn,
+
+                                //    PeopleOut =
+                                //        parsed.PeopleOut,
+
+                                //    Occupancy =
+                                //        Math.Max(
+                                //            0,
+                                //            parsed.PeopleIn -
+                                //            parsed.PeopleOut),
+
+                                //    RawPayloadJson =
+                                //        parsed.RawData,
+
+                                //    CreatedAtUtc =
+                                //        DateTime.UtcNow
+                                //};
+
+                                //var exists =
+                                //    await _deviceReadingRepository
+                                //        .ExistsAsync(
+                                //            reading.DeviceId,
+                                //            reading.ReadingTimestampUtc,
+                                //            reading.PeopleIn,
+                                //            reading.PeopleOut);
+
+                                //if (exists)
+                                //{
+                                //    await _devicePayloadRepository.UpdateStatusAsync(
+                                //        payload.Id,
+                                //        PayloadStatuses.Duplicate);
+
+                                //    Console.WriteLine();
+                                //    Console.WriteLine("DUPLICATE READING");
+                                //    Console.WriteLine("--------------------------------");
+                                //    Console.WriteLine(
+                                //        $"{reading.ReadingTimestampUtc:yyyy-MM-dd HH:mm:ss} | " +
+                                //        $"IN={reading.PeopleIn} | " +
+                                //        $"OUT={reading.PeopleOut}");
+
+                                //    continue;
+                                //}
+
+                                //try
+                                //{
+                                //    await _deviceReadingRepository
+                                //        .CreateAsync(
+                                //            reading,
+                                //            cancellationToken);
+
+                                //    await _devicePayloadRepository.UpdateStatusAsync(
+                                //        payload.Id,
+                                //        PayloadStatuses.Saved);
+
+                                //    Console.WriteLine();
+                                //    Console.WriteLine("DEVICE READING SAVED");
+                                //    Console.WriteLine("--------------------------------");
+                                //    Console.WriteLine(
+                                //        $"{reading.ReadingTimestampUtc:yyyy-MM-dd HH:mm:ss} | " +
+                                //        $"IN={reading.PeopleIn} | " +
+                                //        $"OUT={reading.PeopleOut}");
+                                //}
+                                //catch (Exception ex)
+                                //{
+                                //    await _devicePayloadRepository.UpdateStatusAsync(
+                                //        payload.Id,
+                                //        PayloadStatuses.Failed,
+                                //        ex.Message);
+
+                                //    Console.WriteLine();
+                                //    Console.WriteLine("DEVICE READING ERROR");
+                                //    Console.WriteLine("--------------------------------");
+                                //    Console.WriteLine(ex.Message);
+                                //}
                             }
                             catch (Exception ex)
                             {
@@ -217,9 +252,32 @@ public sealed class TelemetryController : ControllerBase
 
                 if (form.TryGetValue("data", out var data))
                 {
-                    Console.WriteLine(cmd == "cache" ? "CACHE DATA" : "REQUEST DATA");
+                    Console.WriteLine(
+                        cmd == "cache"
+                            ? "CACHE DATA"
+                            : "REQUEST DATA");
+
                     Console.WriteLine("--------------------------------");
                     Console.WriteLine(data);
+
+                    if (cmd == "getsetting")
+                    {
+                        var getSettingParsed =
+                            Hpc015sGetsettingRequest.Parse(
+                                data.ToString());
+
+                        if (getSettingParsed is not null)
+                        {
+                            Console.WriteLine();
+                            Console.WriteLine("GETSETTING PARSED");
+                            Console.WriteLine("--------------------------------");
+                            Console.WriteLine(
+                                $"RecordingCycle = {getSettingParsed.RecordingCycle}");
+
+                            Console.WriteLine(
+                                $"UploadCycle    = {getSettingParsed.UploadCycle}");
+                        }
+                    }
                 }
 
                 Console.WriteLine();
