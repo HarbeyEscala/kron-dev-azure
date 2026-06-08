@@ -1,23 +1,27 @@
+using System.Text;
+using FluentMigrator.Runner;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Kron.Counting.API.Extensions;
 using Kron.Counting.Application.Interfaces;
+using Kron.Counting.Application.Interfaces.Repositories;
 using Kron.Counting.Application.Services;
 using Kron.Counting.Application.Validators;
+using Kron.Counting.Infrastructure.BackgroundJobs;
 using Kron.Counting.Infrastructure.Data;
+using Kron.Counting.Infrastructure.DeviceGateways;
+using Kron.Counting.Infrastructure.Migrations;
 using Kron.Counting.Infrastructure.Repositories;
 using Kron.Counting.Infrastructure.Security;
 using Kron.Counting.Shared.Responses;
 using Kron.Counting.Shared.Settings;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
-using System.Text;
 using Microsoft.OpenApi.Models;
-using FluentMigrator.Runner;
-using Kron.Counting.Infrastructure.Migrations;
-using Kron.Counting.Infrastructure.DeviceGateways;
-using Kron.Counting.Infrastructure.BackgroundJobs;
+using StackExchange.Redis;
+using Kron.Counting.Infrastructure.Cache;
+using Kron.Counting.Infrastructure.Realtime;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +29,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<DatabaseSettings>(
     builder.Configuration.GetSection(DatabaseSettings.SectionName));
+
+builder.Services.Configure<RedisSettings>(
+    builder.Configuration.GetSection("Redis"));
 
 builder.Services.Configure<JwtSettings>(
     builder.Configuration.GetSection("JwtSettings"));
@@ -40,6 +47,19 @@ builder.Services.AddCors(options =>
                 .AllowAnyMethod();
         });
 });
+
+builder.Services.AddSingleton<IConnectionMultiplexer>(
+    sp =>
+    {
+        var settings =
+            builder.Configuration
+                .GetSection("Redis")
+                .Get<RedisSettings>();
+
+        return ConnectionMultiplexer.Connect(
+            settings!.ConnectionString);
+    });
+
 builder.Services.AddHttpClient();
 #endregion
 
@@ -55,12 +75,18 @@ builder.Services
         .For.Migrations());
 
 builder.Services.AddHostedService<MigrationRunnerService>();
+builder.Services.AddHostedService<PayloadReprocessorService>();
+builder.Services.AddHostedService<HourlyMetricsMaterializerBackgroundService>();
+builder.Services.AddHostedService<DailyMetricsMaterializerBackgroundService>();
+builder.Services.AddHostedService<MonthlyMetricsMaterializerBackgroundService>();
 
 #endregion
 
 #region Controllers / Validation
 
 builder.Services.AddControllers();
+
+builder.Services.AddSignalR();
 
 builder.Services.AddFluentValidationAutoValidation();
 
@@ -125,6 +151,8 @@ builder.Services.AddSwaggerGen(options =>
         }
     });
 });
+
+builder.Services.AddScoped<ICacheService, RedisCacheService>();
 #endregion
 
 #region Authentication
@@ -168,8 +196,21 @@ builder.Services.AddScoped<IDeviceRepository, DeviceRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IDeviceReadingRepository, DeviceReadingRepository>();
 builder.Services.AddScoped<IDevicePayloadRepository, DevicePayloadRepository>();
-builder.Services.AddHostedService<PayloadReprocessorService>();
+builder.Services.AddScoped<IAnalyticsRepository, AnalyticsRepository>();
+builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
+builder.Services.AddScoped<IMaterializationStateRepository, MaterializationStateRepository>();
+builder.Services.AddScoped<IHourlyMaterializationRepository, HourlyMaterializationRepository>();
+builder.Services.AddScoped<IHourlyMetricsMaterializerService, HourlyMetricsMaterializerService>();
+builder.Services.AddScoped<IDailyMaterializationRepository, DailyMaterializationRepository>();
+builder.Services.AddScoped<IMonthlyMaterializationRepository, MonthlyMaterializationRepository>();
+builder.Services.AddScoped<IMonthlyMetricsMaterializerService, MonthlyMetricsMaterializerService>();
+builder.Services.AddScoped<ICacheInvalidationService, CacheInvalidationService>();
+
+builder.Services.AddScoped<IRealtimeNotificationService, SignalRRealtimeNotificationService>();
+
+
+builder.Services.AddScoped<IDailyMetricsMaterializerService, DailyMetricsMaterializerService>();
 
 builder.Services.AddHttpClient<IChp015Gateway, Chp015Gateway>();
 
@@ -191,6 +232,7 @@ builder.Services.AddScoped<IDeviceProvisioningService, DeviceProvisioningService
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IDevicePayloadProcessor, DevicePayloadProcessor>();
 
+
 #endregion
 
 var app = builder.Build();
@@ -211,5 +253,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapHub<AnalyticsHub>(
+    "/hubs/analytics");
 
 app.Run();

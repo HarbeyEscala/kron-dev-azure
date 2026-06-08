@@ -250,7 +250,7 @@ public sealed class DeviceRepository : IDeviceRepository
                 FirmwareVersion = @FirmwareVersion,
                 LastTotalIn = @LastTotalIn,
                 LastTotalOut = @LastTotalOut,
-                IpAddress = @IpA
+                IpAddress = @IpAddress,
                 IsActive = @IsActive,
                 UpdatedAtUtc = @UpdatedAtUtc
             WHERE Id = @Id

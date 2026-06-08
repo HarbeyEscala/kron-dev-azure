@@ -1,7 +1,7 @@
 using Kron.Counting.Application.Interfaces;
+using Kron.Counting.Domain.Constants;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Kron.Counting.Domain.Constants;
 
 namespace Kron.Counting.Infrastructure.BackgroundJobs;
 
@@ -31,17 +31,15 @@ public sealed class PayloadReprocessorService
                         .GetRequiredService<
                             IDevicePayloadRepository>();
 
+                var processor =
+                    scope.ServiceProvider
+                        .GetRequiredService<
+                            IDevicePayloadProcessor>();
+
                 var failedPayloads =
                     await repository.GetFailedAsync(
                         100,
                         stoppingToken);
-
-                foreach (var payload in failedPayloads)
-                {
-                    await repository.IncrementRetryAsync(
-                        payload.Id,
-                        stoppingToken);
-                }
 
                 const int MaxRetries = 5;
 
@@ -54,16 +52,37 @@ public sealed class PayloadReprocessorService
                             PayloadStatuses.DeadLetter,
                             $"Maximum retry count exceeded ({payload.RetryCount})");
 
+                        Console.WriteLine(
+                            $"REPROCESSOR -> DEAD LETTER {payload.Id}");
+
                         continue;
                     }
 
-                    await repository.IncrementRetryAsync(
-                        payload.Id,
-                        stoppingToken);
+                    try
+                    {
+                        await repository.IncrementRetryAsync(
+                            payload.Id,
+                            stoppingToken);
 
-                    Console.WriteLine(
-                        $"REPROCESSOR -> RETRY {payload.Id} ({payload.RetryCount + 1})");
+                        await processor.ProcessAsync(
+                            payload,
+                            stoppingToken);
+
+                        Console.WriteLine(
+                            $"REPROCESSOR -> RECOVERED {payload.Id}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(
+                            $"REPROCESSOR -> FAILED {payload.Id}");
+
+                        Console.WriteLine(ex.Message);
+                    }
                 }
+
+                Console.WriteLine();
+                Console.WriteLine(
+                    $"REPROCESSOR -> Failed Count = {failedPayloads.Count()}");
             }
             catch (Exception ex)
             {

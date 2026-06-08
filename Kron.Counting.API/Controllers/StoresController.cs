@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Kron.Counting.API.Controllers;
 
 [ApiController]
-[Authorize(Roles = "Admin,Manager")]
+//[Authorize(Roles = "Admin,Manager")]
 [Route("api/v1/stores")]
 public sealed class StoresController : ControllerBase
 {
