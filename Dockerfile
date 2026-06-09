@@ -5,7 +5,7 @@ WORKDIR /src
 
 COPY . .
 
-RUN dotnet restore Kron.Counting.sln
+RUN dotnet restore Kron.Counting.slnx
 
 RUN dotnet publish \
     Kron.Counting.API/Kron.Counting.API.csproj \
