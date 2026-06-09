@@ -1,18 +1,23 @@
-# Build stage
+# ==========================
+# BUILD STAGE
+# ==========================
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 
 WORKDIR /src
 
 COPY . .
 
-RUN dotnet restore Kron.Counting.slnx
+RUN dotnet restore Kron.Counting.API/Kron.Counting.API.csproj
 
 RUN dotnet publish \
     Kron.Counting.API/Kron.Counting.API.csproj \
     -c Release \
-    -o /app/publish
+    -o /app/publish \
+    --no-restore
 
-# Runtime stage
+# ==========================
+# RUNTIME STAGE
+# ==========================
 FROM mcr.microsoft.com/dotnet/aspnet:9.0
 
 WORKDIR /app
