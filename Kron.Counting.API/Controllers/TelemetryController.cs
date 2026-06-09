@@ -17,8 +17,9 @@ public sealed class TelemetryController : ControllerBase
     private readonly IDevicePayloadRepository _devicePayloadRepository;
     private readonly IDevicePayloadProcessor _devicePayloadProcessor;
 
-    private const string DemoStoreId =
-        "0341DF21-4D90-4E3D-B054-BCD9EC47573D";
+    //private const string DemoStoreId =
+    //    //"0341DF21-4D90-4E3D-B054-BCD9EC47573D";
+    //    "75380B27-528D-48F8-85A3-136AFE523F08";
 
     public TelemetryController(
         IDeviceRepository deviceRepository,
@@ -292,62 +293,76 @@ public sealed class TelemetryController : ControllerBase
                         ip,
                         cancellationToken);
 
+            //if (device is null)
+            //{
+            //    sb.AppendLine(
+            //        $"AUTO DISCOVERY -> Creating {ip}");
+
+            //    await _deviceRepository.CreateAsync(
+            //        new Device
+            //        {
+            //            Id = Guid.NewGuid(),
+
+            //            StoreId = Guid.Parse(
+            //                DemoStoreId),
+
+            //            SerialNumber =
+            //                $"AUTO-{ip}",
+
+            //            Name =
+            //                $"HP015-{ip}",
+
+            //            DeviceType =
+            //                "HP015",
+
+            //            ApiKey =
+            //                Guid.NewGuid().ToString(),
+
+            //            IpAddress = ip,
+
+            //            IsOnline = true,
+            //            IsActive = true,
+            //            IsDeleted = false,
+
+            //            LastTotalIn = 0,
+            //            LastTotalOut = 0,
+
+            //            CreatedAtUtc =
+            //                DateTime.UtcNow,
+
+            //            LastSeenAtUtc =
+            //                DateTime.UtcNow
+            //        },
+            //        cancellationToken);
+
+            //    sb.AppendLine(
+            //        "AUTO DISCOVERY -> CREATED");
+            //}
+            //else
+            //{
+            //    await _deviceRepository
+            //        .UpdateHeartbeatAsync(
+            //            device.Id,
+            //            DateTime.UtcNow,
+            //            true,
+            //            cancellationToken);
+
+            //    sb.AppendLine(
+            //        $"HEARTBEAT UPDATED -> {device.Name}");
+            //}
             if (device is null)
             {
-                sb.AppendLine(
-                    $"AUTO DISCOVERY -> Creating {ip}");
-
-                await _deviceRepository.CreateAsync(
-                    new Device
-                    {
-                        Id = Guid.NewGuid(),
-
-                        StoreId = Guid.Parse(
-                            DemoStoreId),
-
-                        SerialNumber =
-                            $"AUTO-{ip}",
-
-                        Name =
-                            $"HP015-{ip}",
-
-                        DeviceType =
-                            "HP015",
-
-                        ApiKey =
-                            Guid.NewGuid().ToString(),
-
-                        IpAddress = ip,
-
-                        IsOnline = true,
-                        IsActive = true,
-                        IsDeleted = false,
-
-                        LastTotalIn = 0,
-                        LastTotalOut = 0,
-
-                        CreatedAtUtc =
-                            DateTime.UtcNow,
-
-                        LastSeenAtUtc =
-                            DateTime.UtcNow
-                    },
-                    cancellationToken);
-
-                sb.AppendLine(
-                    "AUTO DISCOVERY -> CREATED");
+                sb.AppendLine($"UNKNOWN REGISTERED DEVICE -> {ip}");
             }
             else
             {
-                await _deviceRepository
-                    .UpdateHeartbeatAsync(
-                        device.Id,
-                        DateTime.UtcNow,
-                        true,
-                        cancellationToken);
+                await _deviceRepository.UpdateHeartbeatAsync(
+                    device.Id,
+                    DateTime.UtcNow,
+                    true,
+                    cancellationToken);
 
-                sb.AppendLine(
-                    $"HEARTBEAT UPDATED -> {device.Name}");
+                sb.AppendLine($"HEARTBEAT UPDATED -> {device.Name}");
             }
         }
 
