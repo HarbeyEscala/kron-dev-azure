@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/Elementos de la solución/">
+    <File Path="Dockerfile" />
+  </Folder>
   <Project Path="Kron.Counting.API/Kron.Counting.API.csproj" />
   <Project Path="Kron.Counting.Application/Kron.Counting.Application.csproj" />
   <Project Path="Kron.Counting.Domain/Kron.Counting.Domain.csproj" />

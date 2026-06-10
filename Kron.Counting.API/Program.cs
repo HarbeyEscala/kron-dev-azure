@@ -74,9 +74,15 @@ builder.Services
         .ScanIn(typeof(MigrationRunnerService).Assembly)
         .For.Migrations());
 
-builder.Services.AddHostedService<MigrationRunnerService>();
+if (!builder.Environment.IsProduction())
+{
+    builder.Services.AddHostedService<MigrationRunnerService>();
+}
 builder.Services.AddHostedService<PayloadReprocessorService>();
-builder.Services.AddHostedService<HourlyMetricsMaterializerBackgroundService>();
+if (!builder.Environment.IsProduction())
+{
+    builder.Services.AddHostedService<HourlyMetricsMaterializerBackgroundService>();
+}
 builder.Services.AddHostedService<DailyMetricsMaterializerBackgroundService>();
 builder.Services.AddHostedService<MonthlyMetricsMaterializerBackgroundService>();
 
