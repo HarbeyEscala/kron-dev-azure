@@ -243,11 +243,15 @@ builder.Services.AddScoped<IDevicePayloadProcessor, DevicePayloadProcessor>();
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+//Desarrollo
+//if (app.Environment.IsDevelopment())
+//{
+//    app.UseSwagger();
+//    app.UseSwaggerUI();
+//}
+
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseGlobalExceptionHandling();
 
