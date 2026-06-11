@@ -1,61 +1,53 @@
 ﻿using Kron.Counting.Application.Interfaces;
 using Kron.Counting.Application.Interfaces.Repositories;
-using Kron.Counting.Domain.Entities;
 
 namespace Kron.Counting.Application.Services;
 
 public sealed class MonthlyMetricsMaterializerService
     : IMonthlyMetricsMaterializerService
 {
-    private readonly IMaterializationStateRepository _stateRepository;
     private readonly IMonthlyMaterializationRepository _repository;
+    private readonly ICacheInvalidationService _cacheInvalidationService;
+    private readonly IRealtimeNotificationService _realtimeNotificationService;
 
     public MonthlyMetricsMaterializerService(
-        IMaterializationStateRepository stateRepository,
-        IMonthlyMaterializationRepository repository)
+        IMonthlyMaterializationRepository repository,
+        ICacheInvalidationService cacheInvalidationService,
+        IRealtimeNotificationService realtimeNotificationService)
     {
-        _stateRepository = stateRepository;
         _repository = repository;
+        _cacheInvalidationService = cacheInvalidationService;
+        _realtimeNotificationService = realtimeNotificationService;
     }
 
     public async Task MaterializeAsync(
-        CancellationToken cancellationToken = default)
+    CancellationToken cancellationToken = default)
     {
-        var state =
-            await _stateRepository.GetByProcessAsync(
-                "MonthlyMetrics");
-
-        if (state is null)
-        {
-            state = new MaterializationState
-            {
-                ProcessName = "MonthlyMetrics",
-                LastProcessedUtc = DateTime.UtcNow.AddYears(-1),
-                UpdatedAtUtc = DateTime.UtcNow
-            };
-
-            state.Id =
-                await _stateRepository.CreateAsync(state);
-        }
+        var fromDate =
+            DateOnly.FromDateTime(
+                DateTime.UtcNow.AddMonths(-12));
 
         var metrics =
             await _repository.GetMonthlyAggregationsAsync(
-                DateOnly.FromDateTime(
-                    state.LastProcessedUtc.Date),
+                fromDate,
                 cancellationToken);
 
-        var list = metrics.ToList();
+        var metricList =
+            metrics.ToList();
 
-        if (!list.Any())
+        if (metricList.Count == 0)
             return;
 
         await _repository.UpsertMonthlyMetricsAsync(
-            list,
+            metricList,
             cancellationToken);
 
-        state.LastProcessedUtc = DateTime.UtcNow;
-        state.UpdatedAtUtc = DateTime.UtcNow;
+        await _cacheInvalidationService
+            .InvalidateAnalyticsAsync(
+                cancellationToken);
 
-        await _stateRepository.UpdateAsync(state);
+        await _realtimeNotificationService
+            .AnalyticsUpdatedAsync(
+                cancellationToken);
     }
 }

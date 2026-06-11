@@ -27,8 +27,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 #region Settings
 
-builder.Services.Configure<DatabaseSettings>(
-    builder.Configuration.GetSection(DatabaseSettings.SectionName));
+//builder.Services.Configure<DatabaseSettings>(
+//    builder.Configuration.GetSection(DatabaseSettings.SectionName));
+
+var connectionString =
+    builder.Configuration["DatabaseSettings:ConnectionString"];
 
 builder.Services.Configure<RedisSettings>(
     builder.Configuration.GetSection("Redis"));

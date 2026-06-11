@@ -1,52 +1,39 @@
 ﻿using Kron.Counting.Application.Interfaces;
 using Kron.Counting.Application.Interfaces.Repositories;
-using Kron.Counting.Domain.Entities;
 
 namespace Kron.Counting.Application.Services;
 
 public sealed class DailyMetricsMaterializerService
     : IDailyMetricsMaterializerService
 {
-    private readonly IMaterializationStateRepository _stateRepository;
     private readonly IDailyMaterializationRepository _repository;
+    private readonly ICacheInvalidationService _cacheInvalidationService;
+    private readonly IRealtimeNotificationService _realtimeNotificationService;
 
     public DailyMetricsMaterializerService(
-        IMaterializationStateRepository stateRepository,
-        IDailyMaterializationRepository repository)
+        IDailyMaterializationRepository repository,
+        ICacheInvalidationService cacheInvalidationService,
+        IRealtimeNotificationService realtimeNotificationService)
     {
-        _stateRepository = stateRepository;
         _repository = repository;
+        _cacheInvalidationService = cacheInvalidationService;
+        _realtimeNotificationService = realtimeNotificationService;
     }
 
     public async Task MaterializeAsync(
-        CancellationToken cancellationToken = default)
+    CancellationToken cancellationToken = default)
     {
-        var state =
-            await _stateRepository.GetByProcessAsync(
-                "DailyMetrics");
-
-        if (state is null)
-        {
-            state = new MaterializationState
-            {
-                ProcessName = "DailyMetrics",
-                LastProcessedUtc = DateTime.UtcNow.AddDays(-30),
-                UpdatedAtUtc = DateTime.UtcNow
-            };
-
-            state.Id =
-                await _stateRepository.CreateAsync(state);
-        }
-
         var fromDate =
-            DateOnly.FromDateTime(state.LastProcessedUtc.Date);
+            DateOnly.FromDateTime(
+                DateTime.UtcNow.AddDays(-30));
 
         var metrics =
             await _repository.GetDailyAggregationsAsync(
                 fromDate,
                 cancellationToken);
 
-        var metricList = metrics.ToList();
+        var metricList =
+            metrics.ToList();
 
         if (metricList.Count == 0)
             return;
@@ -55,9 +42,12 @@ public sealed class DailyMetricsMaterializerService
             metricList,
             cancellationToken);
 
-        state.LastProcessedUtc = DateTime.UtcNow;
-        state.UpdatedAtUtc = DateTime.UtcNow;
+        await _cacheInvalidationService
+            .InvalidateAnalyticsAsync(
+                cancellationToken);
 
-        await _stateRepository.UpdateAsync(state);
+        await _realtimeNotificationService
+            .AnalyticsUpdatedAsync(
+                cancellationToken);
     }
 }

@@ -245,6 +245,7 @@ public sealed class DeviceRepository : IDeviceRepository
             const string sql = """
             UPDATE dbo.Devices
             SET
+                StoreId = @StoreId,
                 Name = @Name,
                 DeviceType = @DeviceType,
                 FirmwareVersion = @FirmwareVersion,

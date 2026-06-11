@@ -56,7 +56,12 @@ public sealed class AuthService : IAuthService
         {
             AccessToken = accessToken,
             ExpiresIn = 900,
-            TokenType = "Bearer"
+            TokenType = "Bearer",
+
+            UserId = user.Id,
+            TenantId = user.TenantId,
+            Email = user.Email,
+            Role = user.Role
         };
     }
 }

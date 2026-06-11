@@ -98,6 +98,8 @@ public sealed class DeviceService : IDeviceService
         if (existing is null)
             throw new KeyNotFoundException("Device not found.");
 
+        existing.StoreId = request.StoreId;
+
         existing.Name = request.Name.Trim();
         existing.DeviceType = request.DeviceType.Trim();
         existing.FirmwareVersion = request.FirmwareVersion?.Trim();
