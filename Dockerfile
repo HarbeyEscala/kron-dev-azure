@@ -1,5 +1,5 @@
 # BUILD STAGE
-FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 
 WORKDIR /src
 
@@ -13,7 +13,7 @@ RUN dotnet publish \
     -o /app/publish \
     --no-restore
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
 
 WORKDIR /app
 
