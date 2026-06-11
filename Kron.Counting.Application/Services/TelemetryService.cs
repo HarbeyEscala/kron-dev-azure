@@ -36,6 +36,10 @@ public sealed class TelemetryService : ITelemetryService
         if (!device.IsActive || device.IsDeleted)
             throw new InvalidOperationException("Device is inactive.");
 
+        if (!device.StoreId.HasValue)
+            throw new InvalidOperationException(
+                $"Device {device.Id} is not assigned to a store.");
+
         /*
          * TEMPORAL MVP LOGIC
          *
@@ -87,7 +91,7 @@ public sealed class TelemetryService : ITelemetryService
 
         var snapshot =
             await _dashboardRepository.GetSnapshotByStoreIdAsync(
-                device.StoreId,
+                device.StoreId.Value,
                 cancellationToken);
 
         var occupancy =
@@ -98,7 +102,7 @@ public sealed class TelemetryService : ITelemetryService
             snapshot = new LiveDashboardSnapshot
             {
                 Id = Guid.NewGuid(),
-                StoreId = device.StoreId,
+                StoreId = device.StoreId.Value,
                 CurrentOccupancy = occupancy,
                 TodayIn = peopleIn,
                 TodayOut = peopleOut,
