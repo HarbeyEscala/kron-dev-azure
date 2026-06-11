@@ -7,10 +7,6 @@ public class CreateDeviceValidator : AbstractValidator<CreateDeviceRequestDto>
 {
     public CreateDeviceValidator()
     {
-        RuleFor(x => x.StoreId)
-            .NotEmpty()
-            .WithMessage("StoreId is required");
-
         RuleFor(x => x.SerialNumber)
             .NotEmpty()
             .WithMessage("SerialNumber is required")
