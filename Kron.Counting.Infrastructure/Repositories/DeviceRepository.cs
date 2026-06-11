@@ -116,8 +116,8 @@ public sealed class DeviceRepository : IDeviceRepository
     public async Task<Device?> GetByIpAddressAsync(
         string ipAddress,
         CancellationToken cancellationToken = default)
-        {
-            const string sql = """
+    {
+        const string sql = """
             SELECT
                 Id,
                 StoreId,
@@ -139,15 +139,15 @@ public sealed class DeviceRepository : IDeviceRepository
               AND IsDeleted = 0;
         """;
 
-            using var connection = _connectionFactory.CreateConnection();
+        using var connection = _connectionFactory.CreateConnection();
 
-            return await connection.QueryFirstOrDefaultAsync<Device>(
-                sql,
-                new
-                {
-                    IpAddress = ipAddress
-                });
-        }
+        return await connection.QueryFirstOrDefaultAsync<Device>(
+            sql,
+            new
+            {
+                IpAddress = ipAddress
+            });
+    }
 
     public async Task<Device?> GetBySerialNumberAsync(
         Guid storeId,
@@ -241,8 +241,8 @@ public sealed class DeviceRepository : IDeviceRepository
     public async Task UpdateAsync(
         Device device,
         CancellationToken cancellationToken = default)
-        {
-            const string sql = """
+    {
+        const string sql = """
             UPDATE dbo.Devices
             SET
                 Name = @Name,
@@ -257,10 +257,10 @@ public sealed class DeviceRepository : IDeviceRepository
               AND IsDeleted = 0;
         """;
 
-            using var connection = _connectionFactory.CreateConnection();
+        using var connection = _connectionFactory.CreateConnection();
 
-            await connection.ExecuteAsync(sql, device);
-        }
+        await connection.ExecuteAsync(sql, device);
+    }
 
     public async Task UpdateHeartbeatAsync(
         Guid id,
