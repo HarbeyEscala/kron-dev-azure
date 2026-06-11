@@ -2,7 +2,7 @@ namespace Kron.Counting.Application.DTOs.Requests;
 
 public sealed class CreateDeviceRequestDto
 {
-    public Guid StoreId { get; set; }
+    public Guid? StoreId { get; set; }
 
     public string SerialNumber { get; set; } = default!;
 

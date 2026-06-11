@@ -1,6 +1,7 @@
 using Dapper;
 using Kron.Counting.Application.Interfaces;
 using Kron.Counting.Domain.Entities;
+using Kron.Counting.Domain.ValueObjects;
 
 namespace Kron.Counting.Infrastructure.Repositories;
 
@@ -52,26 +53,26 @@ public sealed class DeviceRepository : IDeviceRepository
         CancellationToken cancellationToken = default)
     {
         const string sql = """
-            SELECT
-                Id,
-                StoreId,
-                SerialNumber,
-                Name,
-                DeviceType,
-                ApiKey,
-                IpAddress,
-                FirmwareVersion,
-                LastSeenAtUtc,
-                IsOnline,
-                IsActive,
-                IsDeleted,
-                CreatedAtUtc,
-                UpdatedAtUtc,
-                DeletedAtUtc
-            FROM dbo.Devices
-            WHERE Id = @Id
-              AND IsDeleted = 0;
-        """;
+        SELECT
+            Id,
+            StoreId,
+            SerialNumber,
+            Name,
+            DeviceType,
+            ApiKey,
+            IpAddress,
+            FirmwareVersion,
+            LastSeenAtUtc,
+            IsOnline,
+            IsActive,
+            IsDeleted,
+            CreatedAtUtc,
+            UpdatedAtUtc,
+            DeletedAtUtc
+        FROM dbo.Devices
+        WHERE Id = @Id
+          AND IsDeleted = 0;
+    """;
 
         using var connection = _connectionFactory.CreateConnection();
 
@@ -150,42 +151,36 @@ public sealed class DeviceRepository : IDeviceRepository
         }
 
     public async Task<Device?> GetBySerialNumberAsync(
-        Guid storeId,
         string serialNumber,
         CancellationToken cancellationToken = default)
     {
         const string sql = """
-            SELECT
-                Id,
-                StoreId,
-                SerialNumber,
-                Name,
-                DeviceType,
-                ApiKey,
-                IpAddress,
-                FirmwareVersion,
-                LastSeenAtUtc,
-                IsOnline,
-                IsActive,
-                IsDeleted,
-                CreatedAtUtc,
-                UpdatedAtUtc,
-                DeletedAtUtc
-            FROM dbo.Devices
-            WHERE StoreId = @StoreId
-              AND SerialNumber = @SerialNumber
-              AND IsDeleted = 0;
-        """;
+        SELECT
+            Id,
+            StoreId,
+            SerialNumber,
+            Name,
+            DeviceType,
+            ApiKey,
+            IpAddress,
+            FirmwareVersion,
+            LastSeenAtUtc,
+            IsOnline,
+            IsActive,
+            IsDeleted,
+            CreatedAtUtc,
+            UpdatedAtUtc,
+            DeletedAtUtc
+        FROM dbo.Devices
+        WHERE SerialNumber = @SerialNumber
+          AND IsDeleted = 0;
+    """;
 
         using var connection = _connectionFactory.CreateConnection();
 
         return await connection.QueryFirstOrDefaultAsync<Device>(
             sql,
-            new
-            {
-                StoreId = storeId,
-                SerialNumber = serialNumber
-            });
+            new { SerialNumber = serialNumber });
     }
 
     public async Task<Guid> CreateAsync(

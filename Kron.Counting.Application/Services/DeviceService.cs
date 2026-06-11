@@ -9,14 +9,11 @@ namespace Kron.Counting.Application.Services;
 public sealed class DeviceService : IDeviceService
 {
     private readonly IDeviceRepository _deviceRepository;
-    private readonly IStoreRepository _storeRepository;
 
     public DeviceService(
-        IDeviceRepository deviceRepository,
-        IStoreRepository storeRepository)
+        IDeviceRepository deviceRepository)
     {
         _deviceRepository = deviceRepository;
-        _storeRepository = storeRepository;
     }
 
     public async Task<IEnumerable<DeviceDto>> GetByStoreIdAsync(
@@ -47,36 +44,40 @@ public sealed class DeviceService : IDeviceService
         CreateDeviceRequestDto request,
         CancellationToken cancellationToken = default)
     {
-        var store =
-            await _storeRepository.GetByIdAsync(
-                request.StoreId,
-                cancellationToken);
-
-        if (store is null)
-            throw new KeyNotFoundException("Store not found.");
-
         var existing =
             await _deviceRepository.GetBySerialNumberAsync(
-                request.StoreId,
                 request.SerialNumber,
                 cancellationToken);
 
         if (existing is not null)
+        {
             throw new InvalidOperationException(
                 $"Device with serial '{request.SerialNumber}' already exists.");
+        }
 
         var entity = new Device
         {
             Id = Guid.NewGuid(),
+
             StoreId = request.StoreId,
-            SerialNumber = request.SerialNumber.Trim().ToUpperInvariant(),
+
+            SerialNumber = request.SerialNumber
+                .Trim()
+                .ToUpperInvariant(),
+
             Name = request.Name.Trim(),
+
             DeviceType = request.DeviceType.Trim(),
+
             ApiKey = Guid.NewGuid().ToString(),
-            FirmwareVersion = request.FirmwareVersion?.Trim(),
+
+            FirmwareVersion =
+                request.FirmwareVersion?.Trim(),
+
             IsOnline = false,
             IsActive = true,
             IsDeleted = false,
+
             CreatedAtUtc = DateTime.UtcNow
         };
 
@@ -96,13 +97,16 @@ public sealed class DeviceService : IDeviceService
                 cancellationToken);
 
         if (existing is null)
-            throw new KeyNotFoundException("Device not found.");
+        {
+            throw new KeyNotFoundException(
+                "Device not found.");
+        }
 
         existing.StoreId = request.StoreId;
-
         existing.Name = request.Name.Trim();
         existing.DeviceType = request.DeviceType.Trim();
-        existing.FirmwareVersion = request.FirmwareVersion?.Trim();
+        existing.FirmwareVersion =
+            request.FirmwareVersion?.Trim();
         existing.IsActive = request.IsActive;
         existing.UpdatedAtUtc = DateTime.UtcNow;
 
@@ -121,7 +125,10 @@ public sealed class DeviceService : IDeviceService
                 cancellationToken);
 
         if (existing is null)
-            throw new KeyNotFoundException("Device not found.");
+        {
+            throw new KeyNotFoundException(
+                "Device not found.");
+        }
 
         await _deviceRepository.SoftDeleteAsync(
             id,
