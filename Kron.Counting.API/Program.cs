@@ -39,6 +39,9 @@ builder.Services.Configure<RedisSettings>(
 builder.Services.Configure<JwtSettings>(
     builder.Configuration.GetSection("JwtSettings"));
 
+builder.Services.Configure<DatabaseSettings>(
+    builder.Configuration.GetSection("DatabaseSettings"));
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll",
