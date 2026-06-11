@@ -77,10 +77,9 @@ builder.Services
         .ScanIn(typeof(MigrationRunnerService).Assembly)
         .For.Migrations());
 
-if (!builder.Environment.IsProduction())
-{
-    builder.Services.AddHostedService<MigrationRunnerService>();
-}
+
+builder.Services.AddHostedService<MigrationRunnerService>();
+
 builder.Services.AddHostedService<PayloadReprocessorService>();
 if (!builder.Environment.IsProduction())
 {
