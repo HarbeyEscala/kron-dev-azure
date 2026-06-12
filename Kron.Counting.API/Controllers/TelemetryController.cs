@@ -329,14 +329,15 @@ public sealed class TelemetryController : ControllerBase
                     {
                         Id = Guid.NewGuid(),
 
-                        StoreId = Guid.Parse(
-                            DemoStoreId),
+                        StoreId = null,
 
                         SerialNumber =
                             serialNumber ?? $"AUTO-{ip}",
 
-                                                Name =
+                        Name =
                             $"HP015-{serialNumber ?? ip}",
+
+                        ProvisioningStatus = "Pending",
 
                         DeviceType =
                             "HP015",

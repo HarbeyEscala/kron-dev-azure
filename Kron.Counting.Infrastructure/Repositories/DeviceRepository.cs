@@ -25,6 +25,7 @@ public sealed class DeviceRepository : IDeviceRepository
                 Name,
                 DeviceType,
                 ApiKey,
+                ProvisioningStatus,
                 IpAddress,
                 FirmwareVersion,
                 LastSeenAtUtc,
@@ -60,6 +61,7 @@ public sealed class DeviceRepository : IDeviceRepository
                 DeviceType,
                 ApiKey,
                 IpAddress,
+                ProvisioningStatus,
                 FirmwareVersion,
                 LastSeenAtUtc,
                 IsOnline,
@@ -93,6 +95,7 @@ public sealed class DeviceRepository : IDeviceRepository
                 DeviceType,
                 ApiKey,
                 IpAddress,
+                ProvisioningStatus,
                 FirmwareVersion,
                 LastSeenAtUtc,
                 IsOnline,
@@ -126,6 +129,7 @@ public sealed class DeviceRepository : IDeviceRepository
                 DeviceType,
                 ApiKey,
                 IpAddress,
+                ProvisioningStatus,
                 FirmwareVersion,
                 LastSeenAtUtc,
                 IsOnline,
@@ -154,10 +158,26 @@ public sealed class DeviceRepository : IDeviceRepository
     CancellationToken cancellationToken)
     {
         const string sql = """
-        SELECT TOP 1 *
-        FROM Devices
-        WHERE SerialNumber = @SerialNumber
-        AND IsDeleted = 0
+            SELECT
+                Id,
+                StoreId,
+                SerialNumber,
+                Name,
+                DeviceType,
+                ApiKey,
+                IpAddress,
+                ProvisioningStatus,
+                FirmwareVersion,
+                LastSeenAtUtc,
+                IsOnline,
+                IsActive,
+                IsDeleted,
+                CreatedAtUtc,
+                UpdatedAtUtc,
+                DeletedAtUtc
+            FROM dbo.Devices
+            WHERE SerialNumber = @SerialNumber
+              AND IsDeleted = 0;
         """;
 
         using var connection =
@@ -184,6 +204,7 @@ public sealed class DeviceRepository : IDeviceRepository
                 DeviceType,
                 ApiKey,
                 IpAddress,
+                ProvisioningStatus,
                 FirmwareVersion,
                 LastSeenAtUtc,
                 IsOnline,
@@ -223,6 +244,7 @@ public sealed class DeviceRepository : IDeviceRepository
                 DeviceType,
                 ApiKey,
                 IpAddress,
+                ProvisioningStatus,
                 LastTotalIn,
                 LastTotalOut,
                 FirmwareVersion,
@@ -241,6 +263,7 @@ public sealed class DeviceRepository : IDeviceRepository
                 @DeviceType,
                 @ApiKey,
                 @IpAddress,
+                @ProvisioningStatus,
                 @LastTotalIn,
                 @LastTotalOut,
                 @FirmwareVersion,
@@ -269,6 +292,7 @@ public sealed class DeviceRepository : IDeviceRepository
                 Name = @Name,
                 DeviceType = @DeviceType,
                 FirmwareVersion = @FirmwareVersion,
+                ProvisioningStatus = @ProvisioningStatus,
                 LastTotalIn = @LastTotalIn,
                 LastTotalOut = @LastTotalOut,
                 IpAddress = @IpAddress,
