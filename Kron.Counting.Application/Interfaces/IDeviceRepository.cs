@@ -28,5 +28,9 @@ public interface IDeviceRepository
     string ipAddress,
     CancellationToken cancellationToken = default);
 
+    Task<Device?> GetBySerialNumberAsync(
+        string serialNumber,
+    CancellationToken cancellationToken);
+
     Task SoftDeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }

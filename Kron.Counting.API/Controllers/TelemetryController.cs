@@ -48,6 +48,8 @@ public sealed class TelemetryController : ControllerBase
                 .RemoteIpAddress?
                 .ToString();
 
+        string? serialNumber = null;
+
         var sb = new StringBuilder();
 
         sb.AppendLine();
@@ -266,6 +268,9 @@ public sealed class TelemetryController : ControllerBase
                             Hpc015sGetsettingRequest.Parse(
                                 data.ToString());
 
+                        serialNumber =
+                            getSettingParsed?.Sn;
+
                         if (getSettingParsed is not null)
                         {
                             Console.WriteLine();
@@ -276,6 +281,10 @@ public sealed class TelemetryController : ControllerBase
 
                             Console.WriteLine(
                                 $"UploadCycle    = {getSettingParsed.UploadCycle}");
+                            Console.WriteLine(
+                                $"SN             = {getSettingParsed.Sn}");
+                            Console.WriteLine(
+                                $"MAC            = {BitConverter.ToString(getSettingParsed.MacRaw ?? [])}");
                         }
                     }
                 }
@@ -284,16 +293,34 @@ public sealed class TelemetryController : ControllerBase
             }
         }
 
+
         if (!string.IsNullOrWhiteSpace(ip))
         {
-            var device =
-                await _deviceRepository
-                    .GetByIpAddressAsync(
-                        ip,
-                        cancellationToken);
+            Device? device = null;
+
+            if (!string.IsNullOrWhiteSpace(serialNumber))
+            {
+                device =
+                    await _deviceRepository
+                        .GetBySerialNumberAsync(
+                            serialNumber,
+                            cancellationToken);
+            }
 
             if (device is null)
             {
+                device =
+                    await _deviceRepository
+                        .GetByIpAddressAsync(
+                            ip,
+                            cancellationToken);
+            }
+
+            if (device is null)
+            {
+                sb.AppendLine(
+                    $"AUTO DISCOVERY -> SN {serialNumber}");
+
                 sb.AppendLine(
                     $"AUTO DISCOVERY -> Creating {ip}");
 
@@ -306,10 +333,10 @@ public sealed class TelemetryController : ControllerBase
                             DemoStoreId),
 
                         SerialNumber =
-                            $"AUTO-{ip}",
+                            serialNumber ?? $"AUTO-{ip}",
 
-                        Name =
-                            $"HP015-{ip}",
+                                                Name =
+                            $"HP015-{serialNumber ?? ip}",
 
                         DeviceType =
                             "HP015",

@@ -150,6 +150,27 @@ public sealed class DeviceRepository : IDeviceRepository
     }
 
     public async Task<Device?> GetBySerialNumberAsync(
+        string serialNumber,
+    CancellationToken cancellationToken)
+    {
+        const string sql = """
+        SELECT TOP 1 *
+        FROM Devices
+        WHERE SerialNumber = @SerialNumber
+        AND IsDeleted = 0
+        """;
+
+        using var connection =
+            _connectionFactory.CreateConnection();
+
+        return await connection.QueryFirstOrDefaultAsync<Device>(
+            sql,
+            new
+            {
+                SerialNumber = serialNumber
+            });
+    }
+    public async Task<Device?> GetBySerialNumberAsync(
         Guid storeId,
         string serialNumber,
         CancellationToken cancellationToken = default)
