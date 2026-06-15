@@ -14,6 +14,10 @@ public sealed class DeviceDto
 
     public string? FirmwareVersion { get; set; }
 
+    public string? IpAddress { get; set; }
+
+    public string ProvisioningStatus { get; set; } = "Pending";
+
     public DateTime? LastSeenAtUtc { get; set; }
 
     public bool IsOnline { get; set; }

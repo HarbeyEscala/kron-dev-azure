@@ -2,6 +2,7 @@ using Kron.Counting.Application.DTOs.Requests;
 using Kron.Counting.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace Kron.Counting.API.Controllers;
 
@@ -60,6 +61,43 @@ public sealed class DevicesController : ControllerBase
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         await _deviceService.DeleteAsync(id, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpGet("pending")]
+    public async Task<IActionResult> GetPending(
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _deviceService.GetPendingAsync(
+                cancellationToken);
+
+        return Ok(result);
+    }
+
+    [HttpPost("{id:guid}/provision")]
+    public async Task<IActionResult> Provision(
+        Guid id,
+        [FromBody] ProvisionDeviceRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var tenantIdClaim =
+            User.FindFirst("tenantId")?.Value;
+
+        if (string.IsNullOrWhiteSpace(tenantIdClaim))
+        {
+            return Unauthorized();
+        }
+
+        var tenantId =
+            Guid.Parse(tenantIdClaim);
+
+        await _deviceService.ProvisionAsync(
+            id,
+            tenantId,
+            request,
+            cancellationToken);
+
         return NoContent();
     }
 }

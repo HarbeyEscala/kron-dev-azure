@@ -21,16 +21,28 @@ public interface IDeviceRepository
         CancellationToken cancellationToken = default);
 
     Task<Device?> GetByApiKeyAsync(
-    string apiKey,
-    CancellationToken cancellationToken = default);
+        string apiKey,
+        CancellationToken cancellationToken = default);
 
     Task<Device?> GetByIpAddressAsync(
-    string ipAddress,
-    CancellationToken cancellationToken = default);
+        string ipAddress,
+        CancellationToken cancellationToken = default);
 
     Task<Device?> GetBySerialNumberAsync(
         string serialNumber,
-    CancellationToken cancellationToken);
+        CancellationToken cancellationToken);
+
+    Task<IEnumerable<Device>> GetPendingAsync(
+        CancellationToken cancellationToken = default);
+
+    Task ProvisionAsync(
+        Guid deviceId,
+        Guid tenantId,
+        Guid storeId,
+        string name,
+        CancellationToken cancellationToken = default);
 
     Task SoftDeleteAsync(Guid id, CancellationToken cancellationToken = default);
+
+
 }

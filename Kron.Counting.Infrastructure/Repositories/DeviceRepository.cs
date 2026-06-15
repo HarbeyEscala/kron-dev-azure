@@ -20,6 +20,7 @@ public sealed class DeviceRepository : IDeviceRepository
         const string sql = """
             SELECT
                 Id,
+                TenantId,
                 StoreId,
                 SerialNumber,
                 Name,
@@ -55,6 +56,7 @@ public sealed class DeviceRepository : IDeviceRepository
         const string sql = """
             SELECT
                 Id,
+                TenantId,
                 StoreId,
                 SerialNumber,
                 Name,
@@ -89,6 +91,7 @@ public sealed class DeviceRepository : IDeviceRepository
         const string sql = """
             SELECT
                 Id,
+                TenantId,
                 StoreId,
                 SerialNumber,
                 Name,
@@ -123,6 +126,7 @@ public sealed class DeviceRepository : IDeviceRepository
         const string sql = """
             SELECT
                 Id,
+                TenantId,
                 StoreId,
                 SerialNumber,
                 Name,
@@ -160,6 +164,7 @@ public sealed class DeviceRepository : IDeviceRepository
         const string sql = """
             SELECT
                 Id,
+                TenantId,
                 StoreId,
                 SerialNumber,
                 Name,
@@ -198,6 +203,7 @@ public sealed class DeviceRepository : IDeviceRepository
         const string sql = """
             SELECT
                 Id,
+                TenantId,
                 StoreId,
                 SerialNumber,
                 Name,
@@ -238,6 +244,7 @@ public sealed class DeviceRepository : IDeviceRepository
             INSERT INTO dbo.Devices
             (
                 Id,
+                TenantId,
                 StoreId,
                 SerialNumber,
                 Name,
@@ -257,6 +264,7 @@ public sealed class DeviceRepository : IDeviceRepository
             VALUES
             (
                 @Id,
+                @TenantId,
                 @StoreId,
                 @SerialNumber,
                 @Name,
@@ -332,6 +340,72 @@ public sealed class DeviceRepository : IDeviceRepository
                 Id = id,
                 LastSeenAtUtc = lastSeenAtUtc,
                 IsOnline = isOnline,
+                UpdatedAtUtc = DateTime.UtcNow
+            });
+    }
+
+    public async Task<IEnumerable<Device>> GetPendingAsync(
+    CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+        SELECT
+            Id,
+            TenantId,
+            StoreId,
+            SerialNumber,
+            Name,
+            DeviceType,
+            ApiKey,
+            IpAddress,
+            ProvisioningStatus,
+            FirmwareVersion,
+            LastSeenAtUtc,
+            IsOnline,
+            IsActive,
+            IsDeleted,
+            CreatedAtUtc,
+            UpdatedAtUtc,
+            DeletedAtUtc
+        FROM dbo.Devices
+        WHERE ProvisioningStatus = 'Pending'
+          AND IsDeleted = 0
+        ORDER BY CreatedAtUtc DESC;
+    """;
+
+        using var connection = _connectionFactory.CreateConnection();
+
+        return await connection.QueryAsync<Device>(sql);
+    }
+
+    public async Task ProvisionAsync(
+        Guid deviceId,
+        Guid tenantId,
+        Guid storeId,
+        string name,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+        UPDATE dbo.Devices
+        SET
+            TenantId = @TenantId,
+            StoreId = @StoreId,
+            Name = @Name,
+            ProvisioningStatus = 'Provisioned',
+            UpdatedAtUtc = @UpdatedAtUtc
+        WHERE Id = @DeviceId
+          AND IsDeleted = 0;
+    """;
+
+        using var connection = _connectionFactory.CreateConnection();
+
+        await connection.ExecuteAsync(
+            sql,
+            new
+            {
+                DeviceId = deviceId,
+                TenantId = tenantId,
+                StoreId = storeId,
+                Name = name,
                 UpdatedAtUtc = DateTime.UtcNow
             });
     }

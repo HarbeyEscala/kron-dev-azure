@@ -43,6 +43,16 @@ public sealed class DeviceService : IDeviceService
         return device?.ToDto();
     }
 
+    public async Task<IEnumerable<DeviceDto>> GetPendingAsync(
+    CancellationToken cancellationToken = default)
+    {
+        var devices =
+            await _deviceRepository.GetPendingAsync(
+                cancellationToken);
+
+        return devices.Select(x => x.ToDto());
+    }
+
     public async Task<Guid> CreateAsync(
         CreateDeviceRequestDto request,
         CancellationToken cancellationToken = default)
@@ -106,6 +116,38 @@ public sealed class DeviceService : IDeviceService
 
         await _deviceRepository.UpdateAsync(
             existing,
+            cancellationToken);
+    }
+
+    public async Task ProvisionAsync(
+        Guid deviceId,
+        Guid tenantId,
+        ProvisionDeviceRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var device =
+            await _deviceRepository.GetByIdAsync(
+                deviceId,
+                cancellationToken);
+
+        if (device is null)
+            throw new KeyNotFoundException(
+                "Device not found.");
+
+        var store =
+            await _storeRepository.GetByIdAsync(
+                request.StoreId,
+                cancellationToken);
+
+        if (store is null)
+            throw new KeyNotFoundException(
+                "Store not found.");
+
+        await _deviceRepository.ProvisionAsync(
+            deviceId,
+            tenantId,
+            request.StoreId,
+            request.Name,
             cancellationToken);
     }
 

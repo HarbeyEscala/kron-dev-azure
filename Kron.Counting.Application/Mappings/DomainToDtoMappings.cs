@@ -76,6 +76,8 @@ public static class DomainToDtoMappings
             Name = entity.Name,
             DeviceType = entity.DeviceType,
             FirmwareVersion = entity.FirmwareVersion,
+            IpAddress = entity.IpAddress,
+            ProvisioningStatus = entity.ProvisioningStatus,
             LastSeenAtUtc = entity.LastSeenAtUtc,
             IsOnline = entity.IsOnline,
             IsActive = entity.IsActive,

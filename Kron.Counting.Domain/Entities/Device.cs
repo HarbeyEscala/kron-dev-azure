@@ -4,6 +4,8 @@ public sealed class Device
 {
     public Guid Id { get; set; }
 
+    public Guid? TenantId { get; set; }
+
     public Guid? StoreId { get; set; }
 
     public string ProvisioningStatus { get; set; } = "Pending";

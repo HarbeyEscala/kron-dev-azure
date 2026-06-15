@@ -22,5 +22,14 @@ public interface IDeviceService
         UpdateDeviceRequestDto request,
         CancellationToken cancellationToken = default);
 
+    Task<IEnumerable<DeviceDto>> GetPendingAsync(
+        CancellationToken cancellationToken = default);
+
+    Task ProvisionAsync(
+        Guid deviceId,
+        Guid tenantId,
+        ProvisionDeviceRequestDto request,
+        CancellationToken cancellationToken = default);
+
     Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }
