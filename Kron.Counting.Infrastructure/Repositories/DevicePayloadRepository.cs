@@ -144,4 +144,24 @@ public sealed class DevicePayloadRepository : IDevicePayloadRepository
                     Now = DateTime.UtcNow
                 });
         }
+    public async Task<DateTime?> GetLastPayloadUtcAsync(
+        Guid deviceId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT MAX(ReceivedAtUtc)
+            FROM dbo.DevicePayloads
+            WHERE DeviceId = @DeviceId;
+            """;
+
+        using var connection =
+            _connectionFactory.CreateConnection();
+
+        return await connection.ExecuteScalarAsync<DateTime?>(
+            sql,
+            new
+            {
+                DeviceId = deviceId
+            });
+    }
 }

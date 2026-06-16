@@ -1,16 +1,21 @@
 using System.Text;
+using FirebaseAdmin;
 using FluentMigrator.Runner;
 using FluentValidation;
 using FluentValidation.AspNetCore;
+using Google.Apis.Auth.OAuth2;
 using Kron.Counting.API.Extensions;
 using Kron.Counting.Application.Interfaces;
 using Kron.Counting.Application.Interfaces.Repositories;
 using Kron.Counting.Application.Services;
 using Kron.Counting.Application.Validators;
 using Kron.Counting.Infrastructure.BackgroundJobs;
+using Kron.Counting.Infrastructure.Cache;
 using Kron.Counting.Infrastructure.Data;
 using Kron.Counting.Infrastructure.DeviceGateways;
 using Kron.Counting.Infrastructure.Migrations;
+using Kron.Counting.Infrastructure.Notifications;
+using Kron.Counting.Infrastructure.Realtime;
 using Kron.Counting.Infrastructure.Repositories;
 using Kron.Counting.Infrastructure.Security;
 using Kron.Counting.Shared.Responses;
@@ -20,10 +25,25 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using StackExchange.Redis;
-using Kron.Counting.Infrastructure.Cache;
-using Kron.Counting.Infrastructure.Realtime;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var firebaseFile =
+    Path.Combine(
+        builder.Environment.ContentRootPath,
+        "Secrets",
+        "firebase-admin.json");
+
+if (File.Exists(firebaseFile))
+{
+    FirebaseApp.Create(
+        new AppOptions
+        {
+            Credential =
+                GoogleCredential
+                    .FromFile(firebaseFile)
+        });
+}
 
 #region Settings
 
@@ -85,6 +105,8 @@ if (!builder.Environment.IsProduction())
 }
 builder.Services.AddHostedService<DailyMetricsMaterializerBackgroundService>();
 builder.Services.AddHostedService<MonthlyMetricsMaterializerBackgroundService>();
+builder.Services.AddHostedService<OfflineAlertDetectorBackgroundService>();
+builder.Services.AddHostedService<SilentAlertDetectorBackgroundService>();
 
 #endregion
 
@@ -159,6 +181,8 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 builder.Services.AddScoped<ICacheService, RedisCacheService>();
+builder.Services.AddScoped<OfflineAlertDetectorService>();
+builder.Services.AddScoped<SilentAlertDetectorService>();
 #endregion
 
 #region Authentication
@@ -199,7 +223,12 @@ builder.Services.AddScoped<IBrandRepository, BrandRepository>();
 builder.Services.AddScoped<ITenantRepository, TenantRepository>();
 builder.Services.AddScoped<IStoreRepository, StoreRepository>();
 builder.Services.AddScoped<IDeviceRepository, DeviceRepository>();
+builder.Services.AddScoped<IMeasurementPointRepository, MeasurementPointRepository>();
+builder.Services.AddScoped<IDeviceAssignmentRepository, DeviceAssignmentRepository>();
+builder.Services.AddScoped<IAlertRepository, AlertRepository>();
+builder.Services.AddScoped<IDeviceAssignmentResolver, DeviceAssignmentResolver>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IUserDeviceTokenRepository, UserDeviceTokenRepository>();
 builder.Services.AddScoped<IDeviceReadingRepository, DeviceReadingRepository>();
 builder.Services.AddScoped<IDevicePayloadRepository, DevicePayloadRepository>();
 builder.Services.AddScoped<IAnalyticsRepository, AnalyticsRepository>();
@@ -214,7 +243,7 @@ builder.Services.AddScoped<IMonthlyMetricsMaterializerService, MonthlyMetricsMat
 builder.Services.AddScoped<ICacheInvalidationService, CacheInvalidationService>();
 
 builder.Services.AddScoped<IRealtimeNotificationService, SignalRRealtimeNotificationService>();
-
+builder.Services.AddScoped<FirebaseNotificationService>();
 
 builder.Services.AddScoped<IDailyMetricsMaterializerService, DailyMetricsMaterializerService>();
 

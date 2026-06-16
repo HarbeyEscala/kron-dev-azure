@@ -100,4 +100,39 @@ public sealed class DevicesController : ControllerBase
 
         return NoContent();
     }
+
+    [HttpGet("health")]
+    public async Task<IActionResult> GetHealth(
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _deviceService
+                .GetHealthSummaryAsync(
+                    cancellationToken);
+
+        return Ok(result);
+    }
+
+    [HttpGet("offline")]
+    public async Task<IActionResult> GetOfflineDevices(
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _deviceService.GetOfflineDevicesAsync(
+                cancellationToken);
+
+        return Ok(result);
+    }
+
+    [HttpGet("silent")]
+    public async Task<IActionResult> GetSilentDevices(
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _deviceService
+                .GetSilentDevicesAsync(
+                    cancellationToken);
+
+        return Ok(result);
+    }
 }

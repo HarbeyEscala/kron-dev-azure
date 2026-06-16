@@ -30,6 +30,7 @@ public sealed class DeviceRepository : IDeviceRepository
                 IpAddress,
                 FirmwareVersion,
                 LastSeenAtUtc,
+                LastPayloadUtc,
                 IsOnline,
                 IsActive,
                 IsDeleted,
@@ -66,6 +67,7 @@ public sealed class DeviceRepository : IDeviceRepository
                 ProvisioningStatus,
                 FirmwareVersion,
                 LastSeenAtUtc,
+                LastPayloadUtc,
                 IsOnline,
                 IsActive,
                 IsDeleted,
@@ -101,6 +103,7 @@ public sealed class DeviceRepository : IDeviceRepository
                 ProvisioningStatus,
                 FirmwareVersion,
                 LastSeenAtUtc,
+                LastPayloadUtc,
                 IsOnline,
                 IsActive,
                 IsDeleted,
@@ -136,6 +139,7 @@ public sealed class DeviceRepository : IDeviceRepository
                 ProvisioningStatus,
                 FirmwareVersion,
                 LastSeenAtUtc,
+                LastPayloadUtc,
                 IsOnline,
                 IsActive,
                 IsDeleted,
@@ -174,6 +178,7 @@ public sealed class DeviceRepository : IDeviceRepository
                 ProvisioningStatus,
                 FirmwareVersion,
                 LastSeenAtUtc,
+                LastPayloadUtc,
                 IsOnline,
                 IsActive,
                 IsDeleted,
@@ -213,6 +218,7 @@ public sealed class DeviceRepository : IDeviceRepository
                 ProvisioningStatus,
                 FirmwareVersion,
                 LastSeenAtUtc,
+                LastPayloadUtc,
                 IsOnline,
                 IsActive,
                 IsDeleted,
@@ -256,6 +262,7 @@ public sealed class DeviceRepository : IDeviceRepository
                 LastTotalOut,
                 FirmwareVersion,
                 LastSeenAtUtc,
+                LastPayloadUtc,
                 IsOnline,
                 IsActive,
                 IsDeleted,
@@ -276,6 +283,7 @@ public sealed class DeviceRepository : IDeviceRepository
                 @LastTotalOut,
                 @FirmwareVersion,
                 @LastSeenAtUtc,
+                @LastPayloadUtc,
                 @IsOnline,
                 @IsActive,
                 @IsDeleted,
@@ -344,6 +352,32 @@ public sealed class DeviceRepository : IDeviceRepository
             });
     }
 
+    public async Task UpdateLastPayloadAsync(
+        Guid deviceId,
+        DateTime payloadUtc,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql =
+            """
+        UPDATE dbo.Devices
+        SET
+            LastPayloadUtc = @PayloadUtc,
+            UpdatedAtUtc = @UpdatedAtUtc
+        WHERE Id = @DeviceId
+        """;
+
+        using var connection =
+            _connectionFactory.CreateConnection();
+
+        await connection.ExecuteAsync(
+            sql,
+            new
+            {
+                DeviceId = deviceId,
+                PayloadUtc = payloadUtc,
+                UpdatedAtUtc = DateTime.UtcNow
+            });
+    }
     public async Task<IEnumerable<Device>> GetPendingAsync(
     CancellationToken cancellationToken = default)
     {
@@ -360,6 +394,7 @@ public sealed class DeviceRepository : IDeviceRepository
             ProvisioningStatus,
             FirmwareVersion,
             LastSeenAtUtc,
+            LastPayloadUtc,
             IsOnline,
             IsActive,
             IsDeleted,
@@ -434,5 +469,39 @@ public sealed class DeviceRepository : IDeviceRepository
                 Id = id,
                 DeletedAtUtc = DateTime.UtcNow
             });
+    }
+
+    public async Task<IEnumerable<Device>> GetAllAsync(
+    CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT
+                Id,
+                TenantId,
+                StoreId,
+                SerialNumber,
+                Name,
+                DeviceType,
+                ApiKey,
+                ProvisioningStatus,
+                IpAddress,
+                FirmwareVersion,
+                LastSeenAtUtc,
+                LastPayloadUtc,
+                IsOnline,
+                IsActive,
+                IsDeleted,
+                CreatedAtUtc,
+                UpdatedAtUtc,
+                DeletedAtUtc
+            FROM dbo.Devices
+            WHERE IsDeleted = 0;
+            """;
+
+        using var connection =
+            _connectionFactory.CreateConnection();
+
+        return await connection.QueryAsync<Device>(
+            sql);
     }
 }

@@ -29,4 +29,7 @@ public sealed class Store
     public Tenant? Tenant { get; set; }
 
     public ICollection<Device> Devices { get; set; } = new List<Device>();
+
+    public ICollection<MeasurementPoint> MeasurementPoints { get; set; }
+        = new List<MeasurementPoint>();
 }

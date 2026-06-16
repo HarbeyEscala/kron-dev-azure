@@ -55,6 +55,11 @@ public sealed class DeviceReadingRepository : IDeviceReadingRepository
                 PeopleIn,
                 PeopleOut,
                 Occupancy,
+
+                DeviceAssignmentId,
+                MeasurementPointId,
+                StoreId,
+
                 RawPayloadJson,
                 CreatedAtUtc
             )
@@ -65,6 +70,11 @@ public sealed class DeviceReadingRepository : IDeviceReadingRepository
                 @PeopleIn,
                 @PeopleOut,
                 @Occupancy,
+
+                @DeviceAssignmentId,
+                @MeasurementPointId,
+                @StoreId,
+
                 @RawPayloadJson,
                 @CreatedAtUtc
             );
@@ -87,6 +97,9 @@ public sealed class DeviceReadingRepository : IDeviceReadingRepository
             SELECT
                 Id,
                 DeviceId,
+                DeviceAssignmentId,
+                MeasurementPointId,
+                StoreId,
                 ReadingTimestampUtc,
                 PeopleIn,
                 PeopleOut,

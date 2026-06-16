@@ -21,25 +21,36 @@ public sealed class HourlyMaterializationRepository
     {
         const string sql = """
             SELECT
-                d.StoreId,
-                CAST(CAST(dr.ReadingTimestampUtc AS date) AS datetime2) AS MetricDate,
-                CAST(DATEPART(HOUR, dr.ReadingTimestampUtc) AS tinyint) AS MetricHour,
+                dr.StoreId,
+                CAST(
+                    CAST(dr.ReadingTimestampUtc AS date)
+                    AS datetime2
+                ) AS MetricDate,
+                CAST(
+                    DATEPART(HOUR, dr.ReadingTimestampUtc)
+                    AS tinyint
+                ) AS MetricHour,
                 SUM(dr.PeopleIn) AS PeopleIn,
                 SUM(dr.PeopleOut) AS PeopleOut,
                 MAX(dr.Occupancy) AS PeakOccupancy,
-                CAST(AVG(CAST(dr.Occupancy AS decimal(18,2))) AS decimal(18,2)) AS AvgOccupancy
+                CAST(
+                    AVG(
+                        CAST(dr.Occupancy AS decimal(18,2))
+                    )
+                    AS decimal(18,2)
+                ) AS AvgOccupancy
             FROM dbo.DeviceReadings dr
-            INNER JOIN dbo.Devices d
-                ON d.Id = dr.DeviceId
             WHERE dr.ReadingTimestampUtc > @FromUtc
-              AND d.IsDeleted = 0
-              AND d.IsActive = 1
+            AND dr.StoreId IS NOT NULL
             GROUP BY
-                d.StoreId,
+                dr.StoreId,
                 CAST(dr.ReadingTimestampUtc AS date),
                 DATEPART(HOUR, dr.ReadingTimestampUtc)
+
             ORDER BY
+
                 MetricDate,
+
                 MetricHour;
         """;
 

@@ -23,6 +23,7 @@ public sealed class Device
     public string? FirmwareVersion { get; set; }
 
     public DateTime? LastSeenAtUtc { get; set; }
+    public DateTime? LastPayloadUtc { get; set; }
 
     public bool IsOnline { get; set; }
 
@@ -43,4 +44,6 @@ public sealed class Device
     public Store? Store { get; set; }
 
     public ICollection<DeviceReading> Readings { get; set; } = new List<DeviceReading>();
+
+    public ICollection<DeviceAssignment> Assignments { get; set; } = new List<DeviceAssignment>();
 }

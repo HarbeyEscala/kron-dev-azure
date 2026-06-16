@@ -2,7 +2,7 @@
 
 public sealed class ProvisionDeviceRequestDto
 {
-    public Guid StoreId { get; set; }
+    public Guid MeasurementPointId { get; set; }
 
     public string Name { get; set; } = default!;
 }

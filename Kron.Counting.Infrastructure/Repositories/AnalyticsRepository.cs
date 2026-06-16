@@ -938,4 +938,232 @@ public sealed class AnalyticsRepository : IAnalyticsRepository
             });
     }
 
+    public async Task<IEnumerable<MeasurementPointAnalyticsDto>> GetMeasurementPointAnalyticsAsync(
+    Guid storeId,
+    DateTime fromUtc,
+    DateTime toUtc)
+    {
+        const string sql = """
+        SELECT
+            mp.Id AS MeasurementPointId,
+            mp.Name AS MeasurementPointName,
+            SUM(dr.PeopleIn) AS Visitors,
+            SUM(dr.PeopleOut) AS Exits,
+            SUM(dr.PeopleIn - dr.PeopleOut) AS NetTraffic,
+            MAX(dr.Occupancy) AS PeakOccupancy,
+            CAST(
+                AVG(CAST(dr.Occupancy AS decimal(18,2)))
+                AS decimal(18,2)
+            ) AS AvgOccupancy
+        FROM dbo.DeviceReadings dr
+        INNER JOIN dbo.MeasurementPoints mp
+            ON mp.Id = dr.MeasurementPointId
+        WHERE dr.StoreId = @StoreId
+          AND dr.MeasurementPointId IS NOT NULL
+          AND dr.ReadingTimestampUtc >= @FromUtc
+          AND dr.ReadingTimestampUtc <= @ToUtc
+        GROUP BY
+            mp.Id,
+            mp.Name
+        ORDER BY
+            Visitors DESC;
+        """;
+
+        using var connection =
+            _connectionFactory.CreateConnection();
+
+        return await connection.QueryAsync<MeasurementPointAnalyticsDto>(
+            sql,
+            new
+            {
+                StoreId = storeId,
+                FromUtc = fromUtc,
+                ToUtc = toUtc
+            });
+    }
+
+    public async Task<IEnumerable<TopMeasurementPointDto>>
+        GetTopMeasurementPointsAsync(
+            Guid storeId,
+            DateTime fromUtc,
+            DateTime toUtc,
+            int top = 10)
+    {
+        const string sql = """
+        SELECT TOP (@Top)
+
+            mp.Id AS MeasurementPointId,
+
+            mp.Name AS MeasurementPointName,
+
+            SUM(dr.PeopleIn) AS Visitors
+
+        FROM dbo.DeviceReadings dr
+
+        INNER JOIN dbo.MeasurementPoints mp
+            ON mp.Id = dr.MeasurementPointId
+
+        WHERE dr.StoreId = @StoreId
+
+          AND dr.MeasurementPointId IS NOT NULL
+
+          AND dr.ReadingTimestampUtc >= @FromUtc
+
+          AND dr.ReadingTimestampUtc <= @ToUtc
+
+        GROUP BY
+            mp.Id,
+            mp.Name
+
+        ORDER BY
+            Visitors DESC;
+        """;
+
+        using var connection =
+            _connectionFactory.CreateConnection();
+
+        var rows =
+            (await connection.QueryAsync<TopMeasurementPointDto>(
+                sql,
+                new
+                {
+                    StoreId = storeId,
+                    FromUtc = fromUtc,
+                    ToUtc = toUtc,
+                    Top = top
+                }))
+            .ToList();
+
+        for (var i = 0; i < rows.Count; i++)
+        {
+            rows[i].Rank = i + 1;
+        }
+
+        return rows;
+    }
+
+    public async Task<IEnumerable<MeasurementPointDistributionDto>>
+    GetMeasurementPointDistributionAsync(
+        Guid storeId,
+        DateTime fromUtc,
+        DateTime toUtc)
+    {
+        const string sql = """
+        WITH Traffic AS
+        (
+            SELECT
+                mp.Id AS MeasurementPointId,
+                mp.Name AS MeasurementPointName,
+                SUM(dr.PeopleIn) AS Visitors
+            FROM dbo.DeviceReadings dr
+            INNER JOIN dbo.MeasurementPoints mp
+                ON mp.Id = dr.MeasurementPointId
+            WHERE dr.StoreId = @StoreId
+              AND dr.MeasurementPointId IS NOT NULL
+              AND dr.ReadingTimestampUtc >= @FromUtc
+              AND dr.ReadingTimestampUtc <= @ToUtc
+            GROUP BY
+                mp.Id,
+                mp.Name
+        )
+        SELECT
+            MeasurementPointId,
+            MeasurementPointName,
+            Visitors,
+            CAST(
+                Visitors * 100.0 /
+                NULLIF(SUM(Visitors) OVER(),0)
+                AS decimal(18,2)
+            ) AS TrafficPercentage
+        FROM Traffic
+        ORDER BY Visitors DESC;
+        """;
+
+        using var connection =
+            _connectionFactory.CreateConnection();
+
+        return await connection.QueryAsync<
+            MeasurementPointDistributionDto>(
+            sql,
+            new
+            {
+                StoreId = storeId,
+                FromUtc = fromUtc,
+                ToUtc = toUtc
+            });
+    }
+
+    public async Task<MeasurementPointComparisonDto?>
+    GetMeasurementPointComparisonAsync(
+        Guid primaryMeasurementPointId,
+        Guid comparisonMeasurementPointId,
+        DateTime fromUtc,
+        DateTime toUtc)
+    {
+        const string sql = """
+        WITH Metrics AS
+        (
+            SELECT
+                mp.Id,
+                mp.Name,
+                SUM(dr.PeopleIn) AS Visitors,
+                MAX(dr.Occupancy) AS PeakOccupancy
+            FROM dbo.DeviceReadings dr
+            INNER JOIN dbo.MeasurementPoints mp
+                ON mp.Id = dr.MeasurementPointId
+            WHERE dr.MeasurementPointId IN
+            (
+                @PrimaryMeasurementPointId,
+                @ComparisonMeasurementPointId
+            )
+            AND dr.ReadingTimestampUtc >= @FromUtc
+            AND dr.ReadingTimestampUtc <= @ToUtc
+            GROUP BY
+                mp.Id,
+                mp.Name
+        )
+        SELECT
+            p.Id AS PrimaryMeasurementPointId,
+            p.Name AS PrimaryMeasurementPointName,
+
+            c.Id AS ComparisonMeasurementPointId,
+            c.Name AS ComparisonMeasurementPointName,
+
+            p.Visitors AS PrimaryVisitors,
+            c.Visitors AS ComparisonVisitors,
+
+            p.PeakOccupancy AS PrimaryPeakOccupancy,
+            c.PeakOccupancy AS ComparisonPeakOccupancy,
+
+            p.Visitors - c.Visitors AS VisitorDifference,
+
+            p.PeakOccupancy - c.PeakOccupancy
+                AS OccupancyDifference
+
+        FROM Metrics p
+        CROSS JOIN Metrics c
+
+        WHERE p.Id = @PrimaryMeasurementPointId
+          AND c.Id = @ComparisonMeasurementPointId;
+        """;
+
+        using var connection =
+            _connectionFactory.CreateConnection();
+
+        return await connection.QuerySingleOrDefaultAsync<
+            MeasurementPointComparisonDto>(
+            sql,
+            new
+            {
+                PrimaryMeasurementPointId =
+                    primaryMeasurementPointId,
+
+                ComparisonMeasurementPointId =
+                    comparisonMeasurementPointId,
+
+                FromUtc = fromUtc,
+                ToUtc = toUtc
+            });
+    }
+
 }

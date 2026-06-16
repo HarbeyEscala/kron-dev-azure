@@ -98,4 +98,30 @@ public interface IAnalyticsService
         Guid comparisonStoreId,
         DateTime fromUtc,
         DateTime toUtc);
+
+    Task<IEnumerable<MeasurementPointAnalyticsDto>>
+        GetMeasurementPointAnalyticsAsync(
+            Guid storeId,
+            DateTime fromUtc,
+            DateTime toUtc);
+
+    Task<IEnumerable<TopMeasurementPointDto>>
+        GetTopMeasurementPointsAsync(
+            Guid storeId,
+            DateTime fromUtc,
+            DateTime toUtc,
+            int top = 10);
+
+    Task<IEnumerable<MeasurementPointDistributionDto>>
+        GetMeasurementPointDistributionAsync(
+            Guid storeId,
+            DateTime fromUtc,
+            DateTime toUtc);
+
+    Task<MeasurementPointComparisonDto?>
+        GetMeasurementPointComparisonAsync(
+            Guid primaryMeasurementPointId,
+            Guid comparisonMeasurementPointId,
+            DateTime fromUtc,
+            DateTime toUtc);
 }

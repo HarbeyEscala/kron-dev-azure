@@ -362,4 +362,60 @@ public sealed class AnalyticsService : IAnalyticsService
             fromUtc,
             toUtc);
     }
+
+    public async Task<IEnumerable<MeasurementPointAnalyticsDto>>
+        GetMeasurementPointAnalyticsAsync(
+            Guid storeId,
+            DateTime fromUtc,
+            DateTime toUtc)
+    {
+        return await _analyticsRepository
+            .GetMeasurementPointAnalyticsAsync(
+                storeId,
+                fromUtc,
+                toUtc);
+    }
+
+    public async Task<IEnumerable<TopMeasurementPointDto>>
+        GetTopMeasurementPointsAsync(
+            Guid storeId,
+            DateTime fromUtc,
+            DateTime toUtc,
+            int top = 10)
+    {
+        return await _analyticsRepository
+            .GetTopMeasurementPointsAsync(
+                storeId,
+                fromUtc,
+                toUtc,
+                top);
+    }
+
+    public async Task<IEnumerable<MeasurementPointDistributionDto>>
+        GetMeasurementPointDistributionAsync(
+            Guid storeId,
+            DateTime fromUtc,
+            DateTime toUtc)
+    {
+        return await _analyticsRepository
+            .GetMeasurementPointDistributionAsync(
+                storeId,
+                fromUtc,
+                toUtc);
+    }
+
+    public async Task<MeasurementPointComparisonDto?>
+        GetMeasurementPointComparisonAsync(
+            Guid primaryMeasurementPointId,
+            Guid comparisonMeasurementPointId,
+            DateTime fromUtc,
+            DateTime toUtc)
+    {
+        return await _analyticsRepository
+            .GetMeasurementPointComparisonAsync(
+                primaryMeasurementPointId,
+                comparisonMeasurementPointId,
+                fromUtc,
+                toUtc);
+    }
 }

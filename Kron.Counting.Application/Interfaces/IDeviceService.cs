@@ -32,4 +32,15 @@ public interface IDeviceService
         CancellationToken cancellationToken = default);
 
     Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+
+    Task<DeviceHealthSummaryDto>
+        GetHealthSummaryAsync(
+            CancellationToken cancellationToken = default);
+
+    Task<IEnumerable<OfflineDeviceDto>> GetOfflineDevicesAsync(
+        CancellationToken cancellationToken = default);
+
+    Task<IEnumerable<SilentDeviceDto>>
+        GetSilentDevicesAsync(
+            CancellationToken cancellationToken = default);
 }

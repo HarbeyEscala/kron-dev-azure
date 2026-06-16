@@ -10,13 +10,22 @@ public sealed class DeviceService : IDeviceService
 {
     private readonly IDeviceRepository _deviceRepository;
     private readonly IStoreRepository _storeRepository;
+    private readonly IMeasurementPointRepository _measurementPointRepository;
+    private readonly IDeviceAssignmentRepository _deviceAssignmentRepository;
+    private readonly IDevicePayloadRepository _devicePayloadRepository;
 
     public DeviceService(
         IDeviceRepository deviceRepository,
-        IStoreRepository storeRepository)
+        IStoreRepository storeRepository,
+        IMeasurementPointRepository measurementPointRepository,
+        IDeviceAssignmentRepository deviceAssignmentRepository,
+        IDevicePayloadRepository devicePayloadRepository)
     {
         _deviceRepository = deviceRepository;
         _storeRepository = storeRepository;
+        _measurementPointRepository = measurementPointRepository;
+        _deviceAssignmentRepository = deviceAssignmentRepository;
+        _devicePayloadRepository = devicePayloadRepository;
     }
 
     public async Task<IEnumerable<DeviceDto>> GetByStoreIdAsync(
@@ -134,21 +143,42 @@ public sealed class DeviceService : IDeviceService
             throw new KeyNotFoundException(
                 "Device not found.");
 
-        var store =
-            await _storeRepository.GetByIdAsync(
-                request.StoreId,
-                cancellationToken);
+        var measurementPoint =
+            await _measurementPointRepository.GetByIdAsync(
+                request.MeasurementPointId);
 
-        if (store is null)
-            throw new KeyNotFoundException(
-                "Store not found.");
+        if (measurementPoint is null)
+            throw new KeyNotFoundException("Measurement point not found.");
 
         await _deviceRepository.ProvisionAsync(
             deviceId,
             tenantId,
-            request.StoreId,
+            measurementPoint.StoreId,
             request.Name,
             cancellationToken);
+
+        var activeAssignment =
+            await _deviceAssignmentRepository.GetActiveAssignmentAsync(deviceId);
+
+        if (activeAssignment is not null)
+        {
+            await _deviceAssignmentRepository.CloseAssignmentAsync(
+                activeAssignment.Id);
+        }
+
+        var assignment = new DeviceAssignment
+        {
+            Id = Guid.NewGuid(),
+            DeviceId = deviceId,
+            MeasurementPointId = request.MeasurementPointId,
+            AssignedAtUtc = DateTime.UtcNow,
+            UnassignedAtUtc = null,
+            BaselineTotalIn = device.LastTotalIn,
+            BaselineTotalOut = device.LastTotalOut,
+            CreatedAtUtc = DateTime.UtcNow
+        };
+
+        await _deviceAssignmentRepository.CreateAsync(assignment);
     }
 
     public async Task DeleteAsync(
@@ -166,5 +196,108 @@ public sealed class DeviceService : IDeviceService
         await _deviceRepository.SoftDeleteAsync(
             id,
             cancellationToken);
+    }
+
+    public async Task<DeviceHealthSummaryDto>
+        GetHealthSummaryAsync(
+            CancellationToken cancellationToken = default)
+    {
+        var devices =
+            (await _deviceRepository.GetAllAsync(
+                cancellationToken))
+            .ToList();
+
+        return new DeviceHealthSummaryDto
+        {
+            TotalDevices = devices.Count,
+
+            OnlineDevices =
+                devices.Count(x => x.IsOnline),
+
+            OfflineDevices =
+                devices.Count(x => !x.IsOnline),
+
+            ActiveDevices =
+                devices.Count(x => x.IsActive),
+
+            InactiveDevices =
+                devices.Count(x => !x.IsActive)
+        };
+    }
+
+    public async Task<IEnumerable<OfflineDeviceDto>> GetOfflineDevicesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var utcNow = DateTime.UtcNow;
+
+        var devices =
+            (await _deviceRepository.GetAllAsync(
+                cancellationToken))
+            .Where(x => !x.IsOnline)
+            .OrderBy(x => x.LastSeenAtUtc ?? DateTime.MinValue)
+            .ToList();
+
+        return devices.Select(x => new OfflineDeviceDto
+        {
+            DeviceId = x.Id,
+            Name = x.Name,
+            SerialNumber = x.SerialNumber,
+            IpAddress = x.IpAddress,
+            FirmwareVersion = x.FirmwareVersion,
+            LastSeenAtUtc = x.LastSeenAtUtc,
+            MinutesOffline = x.LastSeenAtUtc.HasValue
+                ? Math.Max(
+                    0,
+                    (int)(utcNow - x.LastSeenAtUtc.Value).TotalMinutes)
+                : 0
+        });
+    }
+
+    public async Task<IEnumerable<SilentDeviceDto>>
+        GetSilentDevicesAsync(
+            CancellationToken cancellationToken = default)
+    {
+        var utcNow = DateTime.UtcNow;
+
+        var devices =
+            (await _deviceRepository.GetAllAsync(
+                cancellationToken))
+            .Where(x => x.IsOnline)
+            .ToList();
+
+        var result =
+            new List<SilentDeviceDto>();
+
+        foreach (var device in devices)
+        {
+            var lastPayloadUtc =
+                await _devicePayloadRepository
+                    .GetLastPayloadUtcAsync(
+                        device.Id,
+                        cancellationToken);
+
+            if (!lastPayloadUtc.HasValue)
+                continue;
+
+            var minutesSilent =
+                (int)(utcNow - lastPayloadUtc.Value)
+                .TotalMinutes;
+
+            if (minutesSilent < 60)
+                continue;
+
+            result.Add(
+                new SilentDeviceDto
+                {
+                    DeviceId = device.Id,
+                    Name = device.Name,
+                    SerialNumber = device.SerialNumber,
+                    LastPayloadUtc = lastPayloadUtc,
+                    MinutesSilent = minutesSilent
+                });
+        }
+
+        return result
+            .OrderByDescending(x => x.MinutesSilent);
     }
 }

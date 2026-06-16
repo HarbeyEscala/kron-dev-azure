@@ -20,6 +20,11 @@ public interface IDeviceRepository
         bool isOnline,
         CancellationToken cancellationToken = default);
 
+    Task UpdateLastPayloadAsync(
+        Guid deviceId,
+        DateTime payloadUtc,
+        CancellationToken cancellationToken = default);
+
     Task<Device?> GetByApiKeyAsync(
         string apiKey,
         CancellationToken cancellationToken = default);
@@ -44,5 +49,7 @@ public interface IDeviceRepository
 
     Task SoftDeleteAsync(Guid id, CancellationToken cancellationToken = default);
 
+    Task<IEnumerable<Device>> GetAllAsync(
+        CancellationToken cancellationToken = default);
 
 }

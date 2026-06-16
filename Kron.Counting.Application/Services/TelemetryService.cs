@@ -9,15 +9,18 @@ public sealed class TelemetryService : ITelemetryService
     private readonly IDeviceRepository _deviceRepository;
     private readonly IDeviceReadingRepository _deviceReadingRepository;
     private readonly IDashboardRepository _dashboardRepository;
+    private readonly IDeviceAssignmentResolver _deviceAssignmentResolver;
 
     public TelemetryService(
         IDeviceRepository deviceRepository,
         IDeviceReadingRepository deviceReadingRepository,
-        IDashboardRepository dashboardRepository)
+        IDashboardRepository dashboardRepository,
+        IDeviceAssignmentResolver deviceAssignmentResolver)
     {
         _deviceRepository = deviceRepository;
         _deviceReadingRepository = deviceReadingRepository;
         _dashboardRepository = dashboardRepository;
+        _deviceAssignmentResolver = deviceAssignmentResolver;
     }
 
     public async Task<long> IngestReadingAsync(
@@ -36,7 +39,13 @@ public sealed class TelemetryService : ITelemetryService
         if (!device.IsActive || device.IsDeleted)
             throw new InvalidOperationException("Device is inactive.");
 
-        if (!device.StoreId.HasValue)
+        var assignmentContext =
+            await _deviceAssignmentResolver.ResolveAsync(
+                deviceId,
+                request.ReadingTimestampUtc,
+                cancellationToken);
+
+        if (assignmentContext is null)
         {
             return 0;
         }
@@ -91,7 +100,7 @@ public sealed class TelemetryService : ITelemetryService
 
         var snapshot =
             await _dashboardRepository.GetSnapshotByStoreIdAsync(
-                device.StoreId.Value,
+                assignmentContext.StoreId,
                 cancellationToken);
 
         var occupancy =
@@ -102,7 +111,7 @@ public sealed class TelemetryService : ITelemetryService
             snapshot = new LiveDashboardSnapshot
             {
                 Id = Guid.NewGuid(),
-                StoreId = device.StoreId.Value,
+                StoreId = assignmentContext.StoreId,
                 CurrentOccupancy = occupancy,
                 TodayIn = peopleIn,
                 TodayOut = peopleOut,

@@ -20,4 +20,8 @@ public interface IDevicePayloadRepository
     Task IncrementRetryAsync(
     Guid id,
     CancellationToken cancellationToken = default);
+
+    Task<DateTime?> GetLastPayloadUtcAsync(
+        Guid deviceId,
+        CancellationToken cancellationToken = default);
 }

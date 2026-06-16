@@ -14,6 +14,12 @@ public sealed class DeviceReading
 
     public int Occupancy { get; set; }
 
+    public Guid? DeviceAssignmentId { get; set; }
+
+    public Guid? MeasurementPointId { get; set; }
+
+    public Guid? StoreId { get; set; }
+
     public string? RawPayloadJson { get; set; }
 
     public DateTime CreatedAtUtc { get; set; }

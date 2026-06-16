@@ -11,25 +11,46 @@ public sealed class DevicePayloadProcessor
 {
     private readonly IDeviceReadingRepository _deviceReadingRepository;
     private readonly IDevicePayloadRepository _devicePayloadRepository;
+    private readonly IDeviceAssignmentResolver _deviceAssignmentResolver;
+    private readonly IDeviceRepository _deviceRepository;
 
     public DevicePayloadProcessor(
         IDeviceReadingRepository deviceReadingRepository,
-        IDevicePayloadRepository devicePayloadRepository)
+        IDevicePayloadRepository devicePayloadRepository,
+        IDeviceAssignmentResolver deviceAssignmentResolver,
+        IDeviceRepository deviceRepository)
     {
         _deviceReadingRepository = deviceReadingRepository;
         _devicePayloadRepository = devicePayloadRepository;
+        _deviceAssignmentResolver = deviceAssignmentResolver;
+        _deviceRepository = deviceRepository;
     }
     public async Task ProcessAsync(
-    DevicePayload payload,
+        DevicePayload payload,
     CancellationToken cancellationToken = default)
     {
         var parsed =
             Hp015Parser.Parse(
                 payload.RawHex);
 
+        var assignmentContext =
+            await _deviceAssignmentResolver.ResolveAsync(
+                payload.DeviceId,
+                parsed.TimestampUtc,
+                cancellationToken);
+
         var reading = new DeviceReading
         {
             DeviceId = payload.DeviceId,
+
+            DeviceAssignmentId =
+                assignmentContext?.DeviceAssignmentId,
+
+            MeasurementPointId =
+                assignmentContext?.MeasurementPointId,
+
+            StoreId =
+                assignmentContext?.StoreId,
 
             ReadingTimestampUtc =
                 parsed.TimestampUtc,
@@ -88,6 +109,11 @@ public sealed class DevicePayloadProcessor
             .CreateAsync(
                 reading,
                 cancellationToken);
+
+        await _deviceRepository.UpdateLastPayloadAsync(
+            payload.DeviceId,
+            parsed.TimestampUtc,
+            cancellationToken);
 
         await _devicePayloadRepository
             .UpdateStatusAsync(

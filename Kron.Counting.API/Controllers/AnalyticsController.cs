@@ -1,4 +1,5 @@
 ﻿using Kron.Counting.Application.Interfaces;
+using Kron.Counting.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -281,5 +282,72 @@ public sealed class AnalyticsController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("measurement-points")]
+    public async Task<IActionResult> GetMeasurementPointAnalytics(
+    [FromQuery] Guid storeId,
+    [FromQuery] DateTime fromUtc,
+    [FromQuery] DateTime toUtc)
+    {
+        var result =
+            await _analyticsService
+                .GetMeasurementPointAnalyticsAsync(
+                    storeId,
+                    fromUtc,
+                    toUtc);
+
+        return Ok(result);
+    }
+
+    [HttpGet("measurement-points/top")]
+    public async Task<IActionResult> GetTopMeasurementPoints(
+        [FromQuery] Guid storeId,
+        [FromQuery] DateTime fromUtc,
+        [FromQuery] DateTime toUtc,
+        [FromQuery] int top = 10)
+    {
+        var result =
+            await _analyticsService
+                .GetTopMeasurementPointsAsync(
+                    storeId,
+                    fromUtc,
+                    toUtc,
+                    top);
+
+        return Ok(result);
+    }
+
+    [HttpGet("measurement-points/distribution")]
+    public async Task<IActionResult> GetMeasurementPointDistribution(
+        [FromQuery] Guid storeId,
+        [FromQuery] DateTime fromUtc,
+        [FromQuery] DateTime toUtc)
+    {
+        var result =
+            await _analyticsService
+                .GetMeasurementPointDistributionAsync(
+                    storeId,
+                    fromUtc,
+                    toUtc);
+
+        return Ok(result);
+    }
+
+    [HttpGet("measurement-points/comparison")]
+    public async Task<IActionResult> GetMeasurementPointComparison(
+        [FromQuery] Guid primaryMeasurementPointId,
+        [FromQuery] Guid comparisonMeasurementPointId,
+        [FromQuery] DateTime fromUtc,
+        [FromQuery] DateTime toUtc)
+    {
+        var result =
+            await _analyticsService
+                .GetMeasurementPointComparisonAsync(
+                    primaryMeasurementPointId,
+                    comparisonMeasurementPointId,
+                    fromUtc,
+                    toUtc);
+
+        return Ok(result);
+    }
 
 }
