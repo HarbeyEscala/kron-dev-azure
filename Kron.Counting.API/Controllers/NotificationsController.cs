@@ -4,6 +4,7 @@ using Kron.Counting.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Kron.Counting.Infrastructure.Notifications;
 using Kron.Counting.Application.DTOs.Requests;
+
 namespace Kron.Counting.API.Controllers;
 
 [ApiController]

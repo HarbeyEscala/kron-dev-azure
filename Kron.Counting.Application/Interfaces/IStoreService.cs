@@ -22,5 +22,10 @@ public interface IStoreService
         UpdateStoreRequestDto request,
         CancellationToken cancellationToken = default);
 
+    Task PatchAsync(
+        Guid id,
+        PatchStoreRequestDto request,
+        CancellationToken cancellationToken = default);
+
     Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }

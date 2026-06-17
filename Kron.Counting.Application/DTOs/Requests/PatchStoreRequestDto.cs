@@ -1,16 +1,14 @@
-namespace Kron.Counting.Application.DTOs.Requests;
+﻿namespace Kron.Counting.Application.DTOs.Requests;
 
-public sealed class UpdateStoreRequestDto
+public sealed class PatchStoreRequestDto
 {
-    public string Name { get; set; } = default!;
+    public string? Name { get; set; }
 
     public string? Description { get; set; }
 
     public string? StoreType { get; set; }
 
     public string? Region { get; set; }
-
-    public bool IsActive { get; set; }
 
     public string? Country { get; set; }
 
@@ -37,4 +35,6 @@ public sealed class UpdateStoreRequestDto
     public string? ContactPhone { get; set; }
 
     public int? Capacity { get; set; }
+
+    public bool? IsActive { get; set; }
 }

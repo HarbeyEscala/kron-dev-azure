@@ -13,17 +13,23 @@ public sealed class SilentAlertDetectorService
     private readonly IAlertRepository _alertRepository;
     private readonly IDeviceAssignmentResolver _deviceAssignmentResolver;
     private readonly IRealtimeNotificationService _realtimeNotificationService;
+    private readonly IUserDeviceTokenRepository _userDeviceTokenRepository;
+    private readonly IFirebaseNotificationService _firebaseNotificationService;
 
     public SilentAlertDetectorService(
         IDeviceRepository deviceRepository,
         IAlertRepository alertRepository,
         IDeviceAssignmentResolver deviceAssignmentResolver,
-        IRealtimeNotificationService realtimeNotificationService)
+        IRealtimeNotificationService realtimeNotificationService,
+        IUserDeviceTokenRepository userDeviceTokenRepository,
+        IFirebaseNotificationService firebaseNotificationService)
     {
         _deviceRepository = deviceRepository;
         _alertRepository = alertRepository;
         _deviceAssignmentResolver = deviceAssignmentResolver;
         _realtimeNotificationService = realtimeNotificationService;
+        _userDeviceTokenRepository = userDeviceTokenRepository;
+        _firebaseNotificationService = firebaseNotificationService;
     }
 
     public async Task ExecuteAsync()
@@ -113,6 +119,36 @@ public sealed class SilentAlertDetectorService
                 .AlertCreatedAsync(
                     alert.TenantId,
                     alert);
+
+            var deviceTokens =
+                await _userDeviceTokenRepository
+                    .GetActiveByTenantAsync(
+                        alert.TenantId);
+
+            var title =
+                severity == AlertSeverity.Critical
+                    ? "🚨 Critical Device Silent"
+                    : "⚠️ Device Silent";
+
+            foreach (var deviceToken in deviceTokens)
+            {
+                try
+                {
+                    await _firebaseNotificationService
+                        .SendAsync(
+                            deviceToken.Token,
+                            title,
+                            alert.Message);
+
+                    Console.WriteLine(
+                        $"FCM SILENT SENT -> {deviceToken.Token}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(
+                        $"FCM SILENT ERROR -> {ex.Message}");
+                }
+            }
         }
     }
 }

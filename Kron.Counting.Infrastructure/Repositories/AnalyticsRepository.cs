@@ -1,5 +1,6 @@
 ﻿using Dapper;
 using Kron.Counting.Application.DTOs.Analytics;
+using Kron.Counting.Application.DTOs.Responses;
 using Kron.Counting.Application.Interfaces;
 
 namespace Kron.Counting.Infrastructure.Repositories;
@@ -1164,6 +1165,78 @@ public sealed class AnalyticsRepository : IAnalyticsRepository
                 FromUtc = fromUtc,
                 ToUtc = toUtc
             });
+    }
+
+    //MAPA
+
+    public async Task<IReadOnlyList<StoreMapDto>>
+    GetStoresMapAsync(
+        Guid tenantId)
+    {
+        const string sql =
+            """
+            SELECT
+
+                s.Id                 AS StoreId,
+                s.Name               AS StoreName,
+
+                s.Country,
+                s.City,
+
+                ISNULL(s.Latitude,0)  AS Latitude,
+                ISNULL(s.Longitude,0) AS Longitude,
+
+                (
+                    SELECT COUNT(*)
+                    FROM dbo.Alerts a
+                    WHERE a.StoreId = s.Id
+                    AND a.IsResolved = 0
+                ) AS OpenAlerts,
+
+                (
+                    SELECT COUNT(*)
+                    FROM dbo.Devices d
+                    WHERE d.StoreId = s.Id
+                    AND d.IsOnline = 1
+                ) AS OnlineDevices
+
+            FROM dbo.Stores s
+            WHERE s.TenantId = @TenantId
+            AND s.IsDeleted = 0
+            """;
+
+        using var connection =
+            _connectionFactory.CreateConnection();
+
+        var rows =
+            await connection.QueryAsync<dynamic>(
+                sql,
+                new { TenantId = tenantId });
+
+        return rows
+            .Select(x => new StoreMapDto
+            {
+                StoreId = x.StoreId,
+                StoreName = x.StoreName,
+
+                Country = x.Country,
+                City = x.City,
+
+                Latitude = x.Latitude,
+                Longitude = x.Longitude,
+
+                CurrentOccupancy = 0,
+
+                OpenAlerts = x.OpenAlerts,
+
+                IsOnline = x.OnlineDevices > 0,
+
+                Status =
+                    x.OpenAlerts > 0
+                        ? "Warning"
+                        : "Healthy"
+            })
+            .ToList();
     }
 
 }

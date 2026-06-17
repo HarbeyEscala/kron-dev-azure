@@ -62,4 +62,19 @@ public sealed class StoresController : ControllerBase
         await _storeService.DeleteAsync(id, cancellationToken);
         return NoContent();
     }
+
+    [HttpPatch("{id:guid}")]
+        public async Task<IActionResult> Patch(
+        Guid id,
+    [FromBody] PatchStoreRequestDto request,
+    CancellationToken cancellationToken)
+    {
+        await _storeService.PatchAsync(
+            id,
+            request,
+            cancellationToken);
+
+        return NoContent();
+    }
+
 }

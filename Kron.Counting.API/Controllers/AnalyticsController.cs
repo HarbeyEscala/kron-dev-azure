@@ -350,4 +350,16 @@ public sealed class AnalyticsController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("stores-map")]
+    public async Task<IActionResult> GetStoresMap(
+        [FromQuery] Guid tenantId)
+    {
+        var result =
+            await _analyticsService
+                .GetStoresMapAsync(
+                    tenantId);
+
+        return Ok(result);
+    }
+
 }

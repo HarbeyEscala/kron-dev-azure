@@ -1,4 +1,5 @@
 ﻿using Kron.Counting.Application.DTOs.Analytics;
+using Kron.Counting.Application.DTOs.Responses;
 using Kron.Counting.Application.Interfaces;
 
 namespace Kron.Counting.Application.Services;
@@ -417,5 +418,14 @@ public sealed class AnalyticsService : IAnalyticsService
                 comparisonMeasurementPointId,
                 fromUtc,
                 toUtc);
+    }
+    
+    public async Task<IReadOnlyList<StoreMapDto>>
+        GetStoresMapAsync(
+            Guid tenantId)
+    {
+        return await _analyticsRepository
+            .GetStoresMapAsync(
+                tenantId);
     }
 }

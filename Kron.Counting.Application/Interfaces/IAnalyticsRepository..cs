@@ -1,4 +1,5 @@
 ﻿using Kron.Counting.Application.DTOs.Analytics;
+using Kron.Counting.Application.DTOs.Responses;
 
 namespace Kron.Counting.Application.Interfaces;
 
@@ -119,4 +120,9 @@ public interface IAnalyticsRepository
             Guid comparisonMeasurementPointId,
             DateTime fromUtc,
             DateTime toUtc);
+
+    //MAPA
+    Task<IReadOnlyList<StoreMapDto>>
+        GetStoresMapAsync(
+            Guid tenantId);
 }

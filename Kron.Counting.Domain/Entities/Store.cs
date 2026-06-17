@@ -16,6 +16,32 @@ public sealed class Store
 
     public string? Region { get; set; }
 
+    public string? Country { get; set; }
+
+    public string? State { get; set; }
+
+    public string? City { get; set; }
+
+    public string? PostalCode { get; set; }
+
+    public string? AddressLine1 { get; set; }
+
+    public string? AddressLine2 { get; set; }
+
+    public decimal? Latitude { get; set; }
+
+    public decimal? Longitude { get; set; }
+
+    public string? TimeZone { get; set; }
+
+    public string? ContactName { get; set; }
+
+    public string? ContactEmail { get; set; }
+
+    public string? ContactPhone { get; set; }
+
+    public int? Capacity { get; set; }
+
     public bool IsActive { get; set; }
 
     public bool IsDeleted { get; set; }

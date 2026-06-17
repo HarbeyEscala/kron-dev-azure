@@ -243,7 +243,7 @@ builder.Services.AddScoped<IMonthlyMetricsMaterializerService, MonthlyMetricsMat
 builder.Services.AddScoped<ICacheInvalidationService, CacheInvalidationService>();
 
 builder.Services.AddScoped<IRealtimeNotificationService, SignalRRealtimeNotificationService>();
-builder.Services.AddScoped<FirebaseNotificationService>();
+builder.Services.AddSingleton<IFirebaseNotificationService, FirebaseNotificationService>();
 
 builder.Services.AddScoped<IDailyMetricsMaterializerService, DailyMetricsMaterializerService>();
 

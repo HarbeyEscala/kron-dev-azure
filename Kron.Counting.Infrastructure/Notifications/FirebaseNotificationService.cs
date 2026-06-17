@@ -1,8 +1,11 @@
 ﻿using FirebaseAdmin.Messaging;
+using Kron.Counting.Application.Interfaces;
+using Kron.Counting.Application.Interfaces;
 
 namespace Kron.Counting.Infrastructure.Notifications;
 
 public sealed class FirebaseNotificationService
+    : IFirebaseNotificationService
 {
     public async Task<string> SendAsync(
         string token,
