@@ -15,4 +15,6 @@ public interface IStoreRepository
     Task UpdateAsync(Store store, CancellationToken cancellationToken = default);
 
     Task SoftDeleteAsync(Guid id, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<Store>> GetAllAsync(CancellationToken cancellationToken = default);
 }

@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using Kron.Counting.Application.Interfaces;
 using Kron.Counting.Shared.Settings;
 using Microsoft.Extensions.Options;
@@ -17,26 +17,28 @@ public sealed class RedisCacheService : ICacheService
         IOptions<RedisSettings> settings)
     {
         _multiplexer = multiplexer;
-
-        _database =
-            multiplexer.GetDatabase();
-
-        _settings =
-            settings.Value;
+        _database = multiplexer.GetDatabase();
+        _settings = settings.Value;
     }
 
     public async Task<T?> GetAsync<T>(
         string key,
-    CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default)
     {
-        var value =
-            await _database.StringGetAsync(key);
+        try
+        {
+            var value = await _database.StringGetAsync(key);
 
-        if (value.IsNullOrEmpty)
+            if (value.IsNullOrEmpty)
+                return default;
+
+            return JsonSerializer.Deserialize<T>(
+                value!.ToString());
+        }
+        catch (Exception ex) when (IsRedisFailure(ex))
+        {
             return default;
-
-        return JsonSerializer.Deserialize<T>(
-            value!.ToString());
+        }
     }
 
     public async Task SetAsync<T>(
@@ -45,44 +47,65 @@ public sealed class RedisCacheService : ICacheService
         TimeSpan? expiration = null,
         CancellationToken cancellationToken = default)
     {
-        var json =
-            JsonSerializer.Serialize(value);
+        try
+        {
+            var json = JsonSerializer.Serialize(value);
 
-        await _database.StringSetAsync(
-            key,
-            json,
-            expiration
-                ?? TimeSpan.FromMinutes(
-                    _settings.DefaultExpirationMinutes));
+            await _database.StringSetAsync(
+                key,
+                json,
+                expiration
+                    ?? TimeSpan.FromMinutes(
+                        _settings.DefaultExpirationMinutes));
+        }
+        catch (Exception ex) when (IsRedisFailure(ex))
+        {
+        }
     }
 
     public async Task RemoveAsync(
         string key,
         CancellationToken cancellationToken = default)
     {
-        await _database.KeyDeleteAsync(key);
+        try
+        {
+            await _database.KeyDeleteAsync(key);
+        }
+        catch (Exception ex) when (IsRedisFailure(ex))
+        {
+        }
     }
 
     public async Task RemoveByPatternAsync(
         string pattern,
-    CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default)
     {
-        var endpoints =
-            _multiplexer.GetEndPoints();
-
-        foreach (var endpoint in endpoints)
+        try
         {
-            var server =
-                _multiplexer.GetServer(endpoint);
+            var endpoints = _multiplexer.GetEndPoints();
 
-            var keys =
-                server.Keys(
+            foreach (var endpoint in endpoints)
+            {
+                var server = _multiplexer.GetServer(endpoint);
+
+                var keys = server.Keys(
                     pattern: pattern);
 
-            foreach (var key in keys)
-            {
-                await _database.KeyDeleteAsync(key);
+                foreach (var key in keys)
+                {
+                    await _database.KeyDeleteAsync(key);
+                }
             }
         }
+        catch (Exception ex) when (IsRedisFailure(ex))
+        {
+        }
     }
+
+    private static bool IsRedisFailure(Exception ex) =>
+        ex is RedisConnectionException
+        || ex is RedisTimeoutException
+        || ex is RedisServerException
+        || ex is ObjectDisposedException
+        || ex is InvalidOperationException;
 }

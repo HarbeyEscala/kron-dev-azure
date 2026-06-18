@@ -32,4 +32,9 @@ public interface IAlertRepository
     Task<IReadOnlyList<Alert>> GetByStoreAsync(
         Guid tenantId,
         Guid storeId);
+
+    Task<Alert?> GetOpenStoreAlertAsync(
+        Guid tenantId,
+        Guid storeId,
+        string type);
 }

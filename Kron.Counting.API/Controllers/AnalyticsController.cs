@@ -362,4 +362,18 @@ public sealed class AnalyticsController : ControllerBase
         return Ok(result);
     }
 
+    // FORECAST - PREDICCION POR ESTADISTICA-V1
+
+    [HttpGet("forecast")]
+    public async Task<IActionResult> GetForecast(
+        [FromQuery] Guid storeId,
+        [FromQuery] DateTime? targetDateUtc)
+    {
+        var result =
+            await _analyticsService.GetForecastAsync(
+                storeId,
+                targetDateUtc ?? DateTime.UtcNow.Date);
+
+        return Ok(result);
+    }
 }

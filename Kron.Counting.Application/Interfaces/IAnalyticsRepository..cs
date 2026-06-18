@@ -125,4 +125,14 @@ public interface IAnalyticsRepository
     Task<IReadOnlyList<StoreMapDto>>
         GetStoresMapAsync(
             Guid tenantId);
+
+    // FORECAST - PREDICCION CON ESTADISTICA -V1
+
+    Task<ForecastDto> GetForecastAsync(
+        Guid storeId,
+        DateTime targetDateUtc);
+
+    Task<int> GetCurrentHourVisitorsAsync(
+        Guid storeId,
+        DateTime utcNow);
 }

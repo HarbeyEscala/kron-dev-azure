@@ -428,4 +428,25 @@ public sealed class AnalyticsService : IAnalyticsService
             .GetStoresMapAsync(
                 tenantId);
     }
+
+    //FORECAST - PREDICCION POR ESTADISTICA -V1
+
+    public async Task<ForecastDto> GetForecastAsync(
+        Guid storeId,
+        DateTime targetDateUtc)
+    {
+        return await _analyticsRepository
+            .GetForecastAsync(
+                storeId,
+                targetDateUtc);
+    }
+
+    public async Task<int> GetCurrentHourVisitorsAsync(
+        Guid storeId)
+    {
+        return await _analyticsRepository
+            .GetCurrentHourVisitorsAsync(
+                storeId,
+                DateTime.UtcNow);
+    }
 }

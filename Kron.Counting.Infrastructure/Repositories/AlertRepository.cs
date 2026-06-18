@@ -252,4 +252,33 @@ public sealed class AlertRepository
 
         return result.ToList();
     }
+
+    public async Task<Alert?> GetOpenStoreAlertAsync(
+        Guid tenantId,
+        Guid storeId,
+        string type)
+    {
+        const string sql =
+            """
+        SELECT TOP 1 *
+        FROM dbo.Alerts
+        WHERE TenantId = @TenantId
+          AND StoreId = @StoreId
+          AND Type = @Type
+          AND IsResolved = 0
+        ORDER BY CreatedAtUtc DESC
+        """;
+
+        using var connection =
+            _connectionFactory.CreateConnection();
+
+        return await connection.QuerySingleOrDefaultAsync<Alert>(
+            sql,
+            new
+            {
+                TenantId = tenantId,
+                StoreId = storeId,
+                Type = type
+            });
+    }
 }

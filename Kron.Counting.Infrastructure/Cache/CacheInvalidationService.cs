@@ -1,4 +1,4 @@
-﻿using Kron.Counting.Application.Interfaces;
+using Kron.Counting.Application.Interfaces;
 
 namespace Kron.Counting.Infrastructure.Cache;
 
@@ -16,8 +16,14 @@ public sealed class CacheInvalidationService
     public async Task InvalidateAnalyticsAsync(
         CancellationToken cancellationToken = default)
     {
-        await _cacheService.RemoveByPatternAsync(
-            "analytics:*",
-            cancellationToken);
+        try
+        {
+            await _cacheService.RemoveByPatternAsync(
+                "analytics:*",
+                cancellationToken);
+        }
+        catch
+        {
+        }
     }
 }

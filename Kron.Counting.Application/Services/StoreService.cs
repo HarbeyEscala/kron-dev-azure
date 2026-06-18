@@ -10,13 +10,16 @@ public sealed class StoreService : IStoreService
 {
     private readonly IStoreRepository _storeRepository;
     private readonly ITenantRepository _tenantRepository;
+    private readonly IMeasurementPointRepository _measurementPointRepository;
 
     public StoreService(
         IStoreRepository storeRepository,
-        ITenantRepository tenantRepository)
+        ITenantRepository tenantRepository,
+        IMeasurementPointRepository measurementPointRepository)
     {
         _storeRepository = storeRepository;
         _tenantRepository = tenantRepository;
+        _measurementPointRepository = measurementPointRepository;
     }
 
     public async Task<IEnumerable<StoreDto>> GetByTenantIdAsync(
@@ -92,7 +95,25 @@ public sealed class StoreService : IStoreService
             CreatedAtUtc = DateTime.UtcNow
         };
 
-        return await _storeRepository.CreateAsync(entity, cancellationToken);
+        await _storeRepository.CreateAsync(entity, cancellationToken);
+
+        var measurementPoint =
+            new MeasurementPoint
+            {
+                Id = Guid.NewGuid(),
+                StoreId = entity.Id,
+                Name = "Main Entrance",
+                Description =
+                    "Auto-generated default measurement point",
+                IsActive = true,
+                CreatedAtUtc = DateTime.UtcNow
+            };
+
+        await _measurementPointRepository.CreateAsync(
+            measurementPoint,
+            cancellationToken);
+
+        return entity.Id;
     }
 
     public async Task UpdateAsync(

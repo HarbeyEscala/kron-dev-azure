@@ -1,9 +1,7 @@
-﻿using Kron.Counting.Application.DTOs.Requests;
+using Kron.Counting.Application.DTOs.Requests;
 using Kron.Counting.Application.Interfaces;
 using Kron.Counting.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
-using Kron.Counting.Infrastructure.Notifications;
-using Kron.Counting.Application.DTOs.Requests;
 
 namespace Kron.Counting.API.Controllers;
 
@@ -12,11 +10,11 @@ namespace Kron.Counting.API.Controllers;
 public sealed class NotificationsController : ControllerBase
 {
     private readonly IUserDeviceTokenRepository _tokenRepository;
-    private readonly FirebaseNotificationService _firebaseNotificationService;
+    private readonly IFirebaseNotificationService _firebaseNotificationService;
 
     public NotificationsController(
         IUserDeviceTokenRepository tokenRepository,
-        FirebaseNotificationService firebaseNotificationService)
+        IFirebaseNotificationService firebaseNotificationService)
     {
         _tokenRepository = tokenRepository;
         _firebaseNotificationService =

@@ -17,7 +17,8 @@ public sealed class MeasurementPointRepository
     }
 
     public async Task<Guid> CreateAsync(
-        MeasurementPoint measurementPoint)
+        MeasurementPoint measurementPoint,
+        CancellationToken cancellationToken = default)
     {
         const string sql =
             """

@@ -74,10 +74,18 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(
         var settings =
             builder.Configuration
                 .GetSection("Redis")
-                .Get<RedisSettings>();
+                .Get<RedisSettings>()
+            ?? new RedisSettings();
 
-        return ConnectionMultiplexer.Connect(
-            settings!.ConnectionString);
+        var options =
+            ConfigurationOptions.Parse(
+                settings.ConnectionString);
+
+        options.AbortOnConnectFail = false;
+        options.ConnectRetry = 3;
+        options.ConnectTimeout = 3000;
+
+        return ConnectionMultiplexer.Connect(options);
     });
 
 builder.Services.AddHttpClient();
@@ -107,6 +115,7 @@ builder.Services.AddHostedService<DailyMetricsMaterializerBackgroundService>();
 builder.Services.AddHostedService<MonthlyMetricsMaterializerBackgroundService>();
 builder.Services.AddHostedService<OfflineAlertDetectorBackgroundService>();
 builder.Services.AddHostedService<SilentAlertDetectorBackgroundService>();
+builder.Services.AddHostedService<TrafficAnomalyDetectorBackgroundService>();
 
 #endregion
 
@@ -180,9 +189,20 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-builder.Services.AddScoped<ICacheService, RedisCacheService>();
+builder.Services.AddScoped<RedisCacheService>();
+builder.Services.AddSingleton<NoOpCacheService>();
+builder.Services.AddScoped<ICacheService>(sp =>
+{
+    var multiplexer =
+        sp.GetRequiredService<IConnectionMultiplexer>();
+
+    return multiplexer.IsConnected
+        ? sp.GetRequiredService<RedisCacheService>()
+        : sp.GetRequiredService<NoOpCacheService>();
+});
 builder.Services.AddScoped<OfflineAlertDetectorService>();
 builder.Services.AddScoped<SilentAlertDetectorService>();
+builder.Services.AddScoped<TrafficAnomalyDetectorService>();
 #endregion
 
 #region Authentication

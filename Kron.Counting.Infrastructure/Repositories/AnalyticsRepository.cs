@@ -1239,4 +1239,132 @@ public sealed class AnalyticsRepository : IAnalyticsRepository
             .ToList();
     }
 
+    // FORECAST - PREDICCION POR ESTADISTICA -V1
+
+    public async Task<ForecastDto> GetForecastAsync(
+    Guid storeId,
+    DateTime targetDateUtc)
+    {
+        const string sql =
+            """
+            DECLARE @TargetDate date = CAST(@TargetDateUtc AS date);
+
+            WITH EquivalentDays AS
+            (
+                SELECT TOP 4
+                    MetricDate
+                FROM dbo.StoreDailyMetrics
+                WHERE StoreId = @StoreId
+                  AND MetricDate < @TargetDate
+                  AND DATEPART(WEEKDAY, MetricDate) = DATEPART(WEEKDAY, @TargetDate)
+                ORDER BY MetricDate DESC
+            ),
+            DailyBase AS
+            (
+                SELECT
+                    COUNT(*) AS HistoricalDaysUsed,
+                    AVG(CAST(PeopleIn AS decimal(18,2))) AS AvgPeopleIn,
+                    AVG(CAST(PeopleOut AS decimal(18,2))) AS AvgPeopleOut,
+                    AVG(CAST(PeakOccupancy AS decimal(18,2))) AS AvgPeakOccupancy
+                FROM dbo.StoreDailyMetrics
+                WHERE StoreId = @StoreId
+                  AND MetricDate IN (SELECT MetricDate FROM EquivalentDays)
+            ),
+            HourlyBase AS
+            (
+                SELECT
+                    MetricHour,
+                    AVG(CAST(PeopleIn AS decimal(18,2))) AS AvgVisitors
+                FROM dbo.StoreHourlyMetrics
+                WHERE StoreId = @StoreId
+                  AND MetricDate IN (SELECT MetricDate FROM EquivalentDays)
+                GROUP BY MetricHour
+            ),
+            PeakHour AS
+            (
+                SELECT TOP 1
+                    MetricHour,
+                    AvgVisitors
+                FROM HourlyBase
+                ORDER BY AvgVisitors DESC
+            )
+
+            SELECT
+                @StoreId AS StoreId,
+                CAST(@TargetDate AS datetime2) AS TargetDateUtc,
+
+                CAST(ISNULL(ROUND(db.AvgPeopleIn, 0), 0) AS int) AS PredictedVisitors,
+                CAST(ISNULL(ROUND(db.AvgPeopleOut, 0), 0) AS int) AS PredictedPeopleOut,
+                CAST(ISNULL(ROUND(db.AvgPeopleIn - db.AvgPeopleOut, 0), 0) AS int) AS PredictedNetTraffic,
+
+                CAST(ISNULL(ph.MetricHour, 0) AS int) AS PredictedPeakHour,
+                CAST(ISNULL(ROUND(ph.AvgVisitors, 0), 0) AS int) AS PredictedPeakHourVisitors,
+
+                CAST(ISNULL(ROUND(db.AvgPeakOccupancy, 0), 0) AS int) AS PredictedPeakOccupancy,
+
+                CAST(
+                    CASE
+                        WHEN ISNULL(db.HistoricalDaysUsed, 0) >= 4 THEN 90
+                        WHEN ISNULL(db.HistoricalDaysUsed, 0) = 3 THEN 75
+                        WHEN ISNULL(db.HistoricalDaysUsed, 0) = 2 THEN 60
+                        WHEN ISNULL(db.HistoricalDaysUsed, 0) = 1 THEN 40
+                        ELSE 0
+                    END
+                AS decimal(18,2)) AS Confidence,
+
+                ISNULL(db.HistoricalDaysUsed, 0) AS HistoricalDaysUsed,
+
+                'EquivalentWeekdayAverageV1' AS Method
+
+            FROM DailyBase db
+            OUTER APPLY
+            (
+                SELECT TOP 1
+                    MetricHour,
+                    AvgVisitors
+                FROM PeakHour
+            ) ph;
+            """;
+
+        using var connection =
+            _connectionFactory.CreateConnection();
+
+        var result =
+            await connection.QuerySingleAsync<ForecastDto>(
+                sql,
+                new
+                {
+                    StoreId = storeId,
+                    TargetDateUtc = targetDateUtc
+                });
+
+        return result;
+    }
+
+    public async Task<int> GetCurrentHourVisitorsAsync(
+        Guid storeId,
+        DateTime utcNow)
+    {
+        const string sql =
+            """
+        SELECT
+            ISNULL(SUM(PeopleIn),0)
+        FROM dbo.StoreHourlyMetrics
+        WHERE StoreId = @StoreId
+          AND MetricDate = CAST(@UtcNow AS date)
+          AND MetricHour = DATEPART(HOUR,@UtcNow)
+        """;
+
+        using var connection =
+            _connectionFactory.CreateConnection();
+
+        return await connection.ExecuteScalarAsync<int>(
+            sql,
+            new
+            {
+                StoreId = storeId,
+                UtcNow = utcNow
+            });
+    }
+
 }

@@ -274,4 +274,50 @@ public sealed class StoreRepository : IStoreRepository
                 DeletedAtUtc = DateTime.UtcNow
             });
     }
+
+    public async Task<IReadOnlyList<Store>> GetAllAsync(
+    CancellationToken cancellationToken = default)
+    {
+        const string sql =
+            """
+            SELECT
+                Id,
+                TenantId,
+                Code,
+                Name,
+                Description,
+                Country,
+                State,
+                City,
+                PostalCode,
+                AddressLine1,
+                AddressLine2,
+                Latitude,
+                Longitude,
+                TimeZone,
+                ContactName,
+                ContactEmail,
+                ContactPhone,
+                Capacity,
+                StoreType,
+                Region,
+                IsActive,
+                IsDeleted,
+                CreatedAtUtc,
+                UpdatedAtUtc,
+                DeletedAtUtc
+            FROM dbo.Stores
+            WHERE IsDeleted = 0
+            ORDER BY Name;
+            """;
+
+        using var connection =
+            _connectionFactory.CreateConnection();
+
+        var result =
+            await connection.QueryAsync<Store>(
+                sql);
+
+        return result.ToList();
+    }
 }

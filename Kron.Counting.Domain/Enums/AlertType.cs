@@ -13,4 +13,10 @@ public static class AlertType
 
     public const string FirmwareOutdated =
         "FirmwareOutdated";
+
+    public const string TrafficDrop =
+        "TrafficDrop";
+
+    public const string TrafficSpike =
+        "TrafficSpike";
 }
