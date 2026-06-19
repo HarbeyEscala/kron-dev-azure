@@ -357,11 +357,27 @@ public sealed class DeviceRepository : IDeviceRepository
         bool isOnline,
         CancellationToken cancellationToken = default)
     {
+        await UpdateConnectionAsync(
+            id,
+            lastSeenAtUtc,
+            isOnline,
+            ipAddress: null,
+            cancellationToken);
+    }
+
+    public async Task UpdateConnectionAsync(
+        Guid id,
+        DateTime lastSeenAtUtc,
+        bool isOnline,
+        string? ipAddress,
+        CancellationToken cancellationToken = default)
+    {
         const string sql = """
             UPDATE dbo.Devices
             SET
                 LastSeenAtUtc = @LastSeenAtUtc,
                 IsOnline = @IsOnline,
+                IpAddress = COALESCE(@IpAddress, IpAddress),
                 UpdatedAtUtc = @UpdatedAtUtc
             WHERE Id = @Id
               AND IsDeleted = 0;
@@ -376,6 +392,7 @@ public sealed class DeviceRepository : IDeviceRepository
                 Id = id,
                 LastSeenAtUtc = lastSeenAtUtc,
                 IsOnline = isOnline,
+                IpAddress = ipAddress,
                 UpdatedAtUtc = DateTime.UtcNow
             });
     }

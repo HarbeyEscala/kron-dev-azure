@@ -20,6 +20,13 @@ public interface IDeviceRepository
         bool isOnline,
         CancellationToken cancellationToken = default);
 
+    Task UpdateConnectionAsync(
+        Guid id,
+        DateTime lastSeenAtUtc,
+        bool isOnline,
+        string? ipAddress,
+        CancellationToken cancellationToken = default);
+
     Task UpdateLastPayloadAsync(
         Guid deviceId,
         DateTime payloadUtc,

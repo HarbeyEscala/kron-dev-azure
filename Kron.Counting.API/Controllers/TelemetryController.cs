@@ -1,3 +1,4 @@
+using Kron.Counting.API.Helpers;
 using Kron.Counting.Application.Interfaces;
 using Kron.Counting.Domain.Entities;
 using Kron.Counting.Shared.Helpers;
@@ -55,10 +56,7 @@ public sealed class TelemetryController : ControllerBase
 
         var now = DateTime.UtcNow;
 
-        var ip =
-            HttpContext.Connection
-                .RemoteIpAddress?
-                .ToString();
+        var ip = ClientIpHelper.Resolve(HttpContext);
 
         string? serialNumber = null;
 
@@ -80,10 +78,11 @@ public sealed class TelemetryController : ControllerBase
                 _logger.LogInformation(
                     "Telemetry device resolved by ApiKey");
 
-                await _deviceRepository.UpdateHeartbeatAsync(
+                await _deviceRepository.UpdateConnectionAsync(
                     resolvedDevice.Id,
                     DateTime.UtcNow,
                     true,
+                    ip,
                     cancellationToken);
             }
             else
@@ -164,6 +163,17 @@ public sealed class TelemetryController : ControllerBase
                 Console.WriteLine("--------------------------------");
                 Console.WriteLine($"CMD = {cmd}");
 
+                if (cmd == "getsetting" &&
+                    form.TryGetValue("data", out var getsettingData))
+                {
+                    var getSettingParsed =
+                        Hpc015sGetsettingRequest.Parse(
+                            getsettingData.ToString());
+
+                    serialNumber =
+                        NormalizeSerial(getSettingParsed?.Sn);
+                }
+
                 if (cmd == "cache")
                 {
                     Device? device = null;
@@ -171,6 +181,13 @@ public sealed class TelemetryController : ControllerBase
                     if (resolvedByApiKey)
                     {
                         device = resolvedDevice;
+                    }
+                    else if (!string.IsNullOrWhiteSpace(serialNumber))
+                    {
+                        device =
+                            await _deviceRepository.GetBySerialNumberAsync(
+                                NormalizeSerial(serialNumber)!,
+                                cancellationToken);
                     }
                     else if (!string.IsNullOrWhiteSpace(ip))
                     {
@@ -187,6 +204,16 @@ public sealed class TelemetryController : ControllerBase
                             _logger.LogWarning(
                                 "Legacy IP identification disabled.");
                         }
+                    }
+
+                    if (device is not null && !resolvedByApiKey)
+                    {
+                        await _deviceRepository.UpdateConnectionAsync(
+                            device.Id,
+                            DateTime.UtcNow,
+                            true,
+                            ip,
+                            cancellationToken);
                     }
 
                     if (device is not null)
@@ -337,7 +364,7 @@ public sealed class TelemetryController : ControllerBase
                                 data.ToString());
 
                         serialNumber =
-                            getSettingParsed?.Sn;
+                            NormalizeSerial(getSettingParsed?.Sn);
 
                         if (getSettingParsed is not null)
                         {
@@ -362,105 +389,13 @@ public sealed class TelemetryController : ControllerBase
         }
 
 
-        if (!resolvedByApiKey && !string.IsNullOrWhiteSpace(ip))
+        if (!resolvedByApiKey)
         {
-            Device? device = null;
-
-            if (!string.IsNullOrWhiteSpace(serialNumber))
-            {
-                device =
-                    await _deviceRepository
-                        .GetBySerialNumberAsync(
-                            serialNumber,
-                            cancellationToken);
-            }
-
-            if (device is null)
-            {
-                if (_telemetrySettings.AllowLegacyIpIdentification)
-                {
-                    device =
-                        await _deviceRepository
-                            .GetByIpAddressAsync(
-                                ip,
-                                cancellationToken);
-                }
-                else
-                {
-                    _logger.LogWarning(
-                        "Legacy IP identification disabled.");
-                }
-            }
-
-            if (device is null)
-            {
-                if (_telemetrySettings.AllowAutoDiscovery)
-                {
-                    sb.AppendLine(
-                        $"AUTO DISCOVERY -> SN {serialNumber}");
-
-                    sb.AppendLine(
-                        $"AUTO DISCOVERY -> Creating {ip}");
-
-                    await _deviceRepository.CreateAsync(
-                        new Device
-                        {
-                            Id = Guid.NewGuid(),
-
-                            StoreId = null,
-
-                            SerialNumber =
-                                serialNumber ?? $"AUTO-{ip}",
-
-                            Name =
-                                $"HP015-{serialNumber ?? ip}",
-
-                            ProvisioningStatus = "Pending",
-
-                            DeviceType =
-                                "HP015",
-
-                            ApiKey =
-                                Guid.NewGuid().ToString(),
-
-                            IpAddress = ip,
-
-                            IsOnline = true,
-                            IsActive = true,
-                            IsDeleted = false,
-
-                            LastTotalIn = 0,
-                            LastTotalOut = 0,
-
-                            CreatedAtUtc =
-                                DateTime.UtcNow,
-
-                            LastSeenAtUtc =
-                                DateTime.UtcNow
-                        },
-                        cancellationToken);
-
-                    sb.AppendLine(
-                        "AUTO DISCOVERY -> CREATED");
-                }
-                else
-                {
-                    _logger.LogWarning(
-                        "Auto discovery disabled. Device not found.");
-                }
-            }
-            else
-            {
-                await _deviceRepository
-                    .UpdateHeartbeatAsync(
-                        device.Id,
-                        DateTime.UtcNow,
-                        true,
-                        cancellationToken);
-
-                sb.AppendLine(
-                    $"HEARTBEAT UPDATED -> {device.Name}");
-            }
+            await RegisterOrRefreshDeviceBySerialAsync(
+                serialNumber,
+                ip,
+                sb,
+                cancellationToken);
         }
 
         sb.AppendLine();
@@ -647,4 +582,81 @@ public sealed class TelemetryController : ControllerBase
 
         return null;
     }
+
+    private async Task RegisterOrRefreshDeviceBySerialAsync(
+        string? serialNumber,
+        string? ip,
+        StringBuilder sb,
+        CancellationToken cancellationToken)
+    {
+        var normalizedSerial = NormalizeSerial(serialNumber);
+
+        if (normalizedSerial is null)
+        {
+            sb.AppendLine("AUTO DISCOVERY -> skipped (serial required)");
+            _logger.LogDebug(
+                "Auto discovery skipped because serial number was not present.");
+            return;
+        }
+
+        var device =
+            await _deviceRepository.GetBySerialNumberAsync(
+                normalizedSerial,
+                cancellationToken);
+
+        if (device is not null)
+        {
+            await _deviceRepository.UpdateConnectionAsync(
+                device.Id,
+                DateTime.UtcNow,
+                true,
+                ip,
+                cancellationToken);
+
+            sb.AppendLine(
+                $"HEARTBEAT UPDATED -> {device.Name} (SN={normalizedSerial}, IP={ip})");
+            return;
+        }
+
+        if (!_telemetrySettings.AllowAutoDiscovery)
+        {
+            _logger.LogWarning(
+                "Auto discovery disabled. Device not found for serial {SerialNumber}.",
+                normalizedSerial);
+            sb.AppendLine(
+                $"AUTO DISCOVERY -> disabled for SN {normalizedSerial}");
+            return;
+        }
+
+        sb.AppendLine($"AUTO DISCOVERY -> SN {normalizedSerial}");
+        sb.AppendLine($"AUTO DISCOVERY -> Creating (IP={ip})");
+
+        await _deviceRepository.CreateAsync(
+            new Device
+            {
+                Id = Guid.NewGuid(),
+                StoreId = null,
+                SerialNumber = normalizedSerial,
+                Name = $"HP015-{normalizedSerial}",
+                ProvisioningStatus = "Pending",
+                DeviceType = "HP015",
+                ApiKey = Guid.NewGuid().ToString(),
+                IpAddress = ip,
+                IsOnline = true,
+                IsActive = true,
+                IsDeleted = false,
+                LastTotalIn = 0,
+                LastTotalOut = 0,
+                CreatedAtUtc = DateTime.UtcNow,
+                LastSeenAtUtc = DateTime.UtcNow
+            },
+            cancellationToken);
+
+        sb.AppendLine("AUTO DISCOVERY -> CREATED");
+    }
+
+    private static string? NormalizeSerial(string? serialNumber) =>
+        string.IsNullOrWhiteSpace(serialNumber)
+            ? null
+            : serialNumber.Trim().ToUpperInvariant();
 }
