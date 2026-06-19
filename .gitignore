@@ -1,10 +1,46 @@
+# Visual Studio
 .vs/
-bin/
-obj/
 *.user
 *.suo
+
+# Build
+bin/
+obj/
+
+# Tests
 TestResults/
+
+# Cache
 *.cache
 
+# Secrets
 Secrets/
 firebase-admin.json
+appsettings.Development.json
+
+# Build verification folders
+_build_verify/
+_build_verify*/
+_build_verify_api/
+_build_verify_api*/
+_build_verify_app/
+_build_verify_app*/
+_build_verify_shared/
+_build_verify_shared*/
+
+# Generated files
+*.pdb
+*.exe
+
+# Logs
+*.log
+
+# Rider
+.idea/
+
+# VS Code
+.vscode/
+
+# NuGet
+packages/
+*.nupkg
