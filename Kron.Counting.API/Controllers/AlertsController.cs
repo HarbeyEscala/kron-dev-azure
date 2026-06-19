@@ -1,9 +1,11 @@
 ﻿using Kron.Counting.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Kron.Counting.API.Controllers;
 
 [ApiController]
+[Authorize(Roles = "Admin,Manager")]
 [Route("api/v1/alerts")]
 public sealed class AlertsController : ControllerBase
 {

@@ -3,6 +3,7 @@ using Kron.Counting.Application.DTOs.Responses;
 using Kron.Counting.Application.Interfaces;
 using Kron.Counting.Application.Mappings;
 using Kron.Counting.Domain.Entities;
+using Kron.Counting.Shared.Exceptions;
 
 namespace Kron.Counting.Application.Services;
 
@@ -52,6 +53,51 @@ public sealed class DeviceService : IDeviceService
         return device?.ToDto();
     }
 
+    public async Task<DeviceApiKeyDto> GetApiKeyAsync(
+        Guid deviceId,
+        CancellationToken cancellationToken = default)
+    {
+        var entity =
+            await _deviceRepository.GetByIdAsync(
+                deviceId,
+                cancellationToken);
+
+        if (entity is null)
+            throw new NotFoundException("Device not found.");
+
+        return new DeviceApiKeyDto
+        {
+            DeviceId = entity.Id,
+            ApiKey = entity.ApiKey
+        };
+    }
+
+    public async Task<DeviceApiKeyDto> RotateApiKeyAsync(
+        Guid deviceId,
+        CancellationToken cancellationToken = default)
+    {
+        var entity =
+            await _deviceRepository.GetByIdAsync(
+                deviceId,
+                cancellationToken);
+
+        if (entity is null)
+            throw new NotFoundException("Device not found.");
+
+        var newApiKey = Guid.NewGuid().ToString();
+
+        await _deviceRepository.UpdateApiKeyAsync(
+            entity.Id,
+            newApiKey,
+            cancellationToken);
+
+        return new DeviceApiKeyDto
+        {
+            DeviceId = entity.Id,
+            ApiKey = newApiKey
+        };
+    }
+
     public async Task<IEnumerable<DeviceDto>> GetPendingAsync(
     CancellationToken cancellationToken = default)
     {
@@ -81,7 +127,7 @@ public sealed class DeviceService : IDeviceService
                 cancellationToken);
 
         if (existing is not null)
-            throw new InvalidOperationException(
+            throw new ConflictException(
                 $"Device with serial '{request.SerialNumber}' already exists.");
 
         var entity = new Device

@@ -25,6 +25,11 @@ public interface IDeviceRepository
         DateTime payloadUtc,
         CancellationToken cancellationToken = default);
 
+    Task UpdateApiKeyAsync(
+        Guid deviceId,
+        string apiKey,
+        CancellationToken cancellationToken = default);
+
     Task<Device?> GetByApiKeyAsync(
         string apiKey,
         CancellationToken cancellationToken = default);

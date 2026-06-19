@@ -323,6 +323,34 @@ public sealed class DeviceRepository : IDeviceRepository
         await connection.ExecuteAsync(sql, device);
     }
 
+    public async Task UpdateApiKeyAsync(
+        Guid deviceId,
+        string apiKey,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            UPDATE dbo.Devices
+            SET
+                ApiKey = @ApiKey,
+                UpdatedAtUtc = @UpdatedAtUtc
+            WHERE Id = @DeviceId
+              AND IsDeleted = 0;
+        """;
+
+        using var connection = _connectionFactory.CreateConnection();
+
+        await connection.ExecuteAsync(
+            new CommandDefinition(
+                sql,
+                new
+                {
+                    DeviceId = deviceId,
+                    ApiKey = apiKey,
+                    UpdatedAtUtc = DateTime.UtcNow
+                },
+                cancellationToken: cancellationToken));
+    }
+
     public async Task UpdateHeartbeatAsync(
         Guid id,
         DateTime lastSeenAtUtc,

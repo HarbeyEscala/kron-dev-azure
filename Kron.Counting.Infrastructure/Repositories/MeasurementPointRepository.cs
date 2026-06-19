@@ -47,12 +47,18 @@ public sealed class MeasurementPointRepository
         using var connection =
             _connectionFactory.CreateConnection();
 
-        await connection.ExecuteAsync(sql, measurementPoint);
+        await connection.ExecuteAsync(
+            new CommandDefinition(
+                sql,
+                measurementPoint,
+                cancellationToken: cancellationToken));
 
         return measurementPoint.Id;
     }
 
-    public async Task<MeasurementPoint?> GetByIdAsync(Guid id)
+    public async Task<MeasurementPoint?> GetByIdAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
     {
         const string sql =
             """
@@ -65,12 +71,15 @@ public sealed class MeasurementPointRepository
             _connectionFactory.CreateConnection();
 
         return await connection.QuerySingleOrDefaultAsync<MeasurementPoint>(
-            sql,
-            new { Id = id });
+            new CommandDefinition(
+                sql,
+                new { Id = id },
+                cancellationToken: cancellationToken));
     }
 
     public async Task<IReadOnlyList<MeasurementPoint>> GetByStoreAsync(
-        Guid storeId)
+        Guid storeId,
+        CancellationToken cancellationToken = default)
     {
         const string sql =
             """
@@ -84,8 +93,10 @@ public sealed class MeasurementPointRepository
 
         var result =
             await connection.QueryAsync<MeasurementPoint>(
-                sql,
-                new { StoreId = storeId });
+                new CommandDefinition(
+                    sql,
+                    new { StoreId = storeId },
+                    cancellationToken: cancellationToken));
 
         return result.ToList();
     }

@@ -56,6 +56,9 @@ builder.Services.Configure<RedisSettings>(
 builder.Services.Configure<JwtSettings>(
     builder.Configuration.GetSection("JwtSettings"));
 
+builder.Services.Configure<TelemetrySettings>(
+    builder.Configuration.GetSection("TelemetrySettings"));
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll",
@@ -233,6 +236,8 @@ builder.Services
         };
     });
 
+builder.Services.AddAuthorization();
+
 #endregion
 
 #region Infrastructure
@@ -279,6 +284,7 @@ builder.Services.AddScoped<IBrandService, BrandService>();
 builder.Services.AddScoped<ITenantService, TenantService>();
 builder.Services.AddScoped<IStoreService, StoreService>();
 builder.Services.AddScoped<IDeviceService, DeviceService>();
+builder.Services.AddScoped<IDeviceAssignmentService, DeviceAssignmentService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
@@ -286,6 +292,9 @@ builder.Services.AddScoped<ITelemetryService, TelemetryService>();
 builder.Services.AddScoped<IDeviceProvisioningService, DeviceProvisioningService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IDevicePayloadProcessor, DevicePayloadProcessor>();
+builder.Services.AddScoped<
+    ITelemetryDeviceResolver,
+    TelemetryDeviceResolver>();
 
 
 #endregion

@@ -1,5 +1,6 @@
 using Kron.Counting.Application.DTOs.Requests;
 using Kron.Counting.Application.Interfaces;
+using Kron.Counting.Shared.Exceptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -33,7 +34,33 @@ public sealed class DevicesController : ControllerBase
         var result = await _deviceService.GetByIdAsync(id, cancellationToken);
 
         if (result is null)
-            return NotFound();
+            throw new NotFoundException("Device not found.");
+
+        return Ok(result);
+    }
+
+    [HttpGet("{id:guid}/api-key")]
+    public async Task<IActionResult> GetApiKey(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _deviceService.GetApiKeyAsync(
+                id,
+                cancellationToken);
+
+        return Ok(result);
+    }
+
+    [HttpPost("{id:guid}/rotate-api-key")]
+    public async Task<IActionResult> RotateApiKey(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _deviceService.RotateApiKeyAsync(
+                id,
+                cancellationToken);
 
         return Ok(result);
     }
@@ -85,9 +112,7 @@ public sealed class DevicesController : ControllerBase
             User.FindFirst("tenantId")?.Value;
 
         if (string.IsNullOrWhiteSpace(tenantIdClaim))
-        {
-            return Unauthorized();
-        }
+            throw new UnauthorizedException("Tenant claim not found.");
 
         var tenantId =
             Guid.Parse(tenantIdClaim);

@@ -1,12 +1,13 @@
 using Kron.Counting.Application.DTOs.Requests;
 using Kron.Counting.Application.Interfaces;
+using Kron.Counting.Shared.Exceptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Kron.Counting.API.Controllers;
 
 [ApiController]
-//[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin")]
 [Route("api/v1/tenants")]
 public sealed class TenantsController : ControllerBase
 {
@@ -32,7 +33,7 @@ public sealed class TenantsController : ControllerBase
         var result = await _tenantService.GetByIdAsync(id, cancellationToken);
 
         if (result is null)
-            return NotFound();
+            throw new NotFoundException("Tenant not found.");
 
         return Ok(result);
     }

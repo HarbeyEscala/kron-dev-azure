@@ -1,5 +1,6 @@
 using Kron.Counting.Application.DTOs.Requests;
 using Kron.Counting.Application.Interfaces;
+using Kron.Counting.Shared.Exceptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -32,7 +33,7 @@ public sealed class UsersController : ControllerBase
         var result = await _userService.GetByIdAsync(id, cancellationToken);
 
         if (result is null)
-            return NotFound();
+            throw new NotFoundException("User not found.");
 
         return Ok(result);
     }

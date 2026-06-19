@@ -17,7 +17,7 @@ public sealed class DashboardService : IDashboardService
         _storeRepository = storeRepository;
     }
 
-    public async Task<DashboardSnapshotDto?> GetSnapshotAsync(
+    public async Task<DashboardSnapshotDto> GetSnapshotAsync(
         Guid storeId,
         CancellationToken cancellationToken = default)
     {
@@ -34,7 +34,20 @@ public sealed class DashboardService : IDashboardService
                 storeId,
                 cancellationToken);
 
-        return snapshot?.ToDto();
+        if (snapshot is null)
+        {
+            return new DashboardSnapshotDto
+            {
+                StoreId = storeId,
+                CurrentOccupancy = 0,
+                TodayIn = 0,
+                TodayOut = 0,
+                LastReadingAtUtc = null,
+                UpdatedAtUtc = default
+            };
+        }
+
+        return snapshot.ToDto();
     }
 
     public async Task<IEnumerable<StoreHourlyMetricDto>> GetHourlyMetricsAsync(

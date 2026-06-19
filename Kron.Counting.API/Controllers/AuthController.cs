@@ -1,5 +1,6 @@
 ﻿using Kron.Counting.Application.DTOs.Requests;
 using Kron.Counting.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Kron.Counting.API.Controllers;
@@ -15,6 +16,7 @@ public sealed class AuthController : ControllerBase
         _authService = authService;
     }
 
+    [AllowAnonymous]
     [HttpPost("login")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

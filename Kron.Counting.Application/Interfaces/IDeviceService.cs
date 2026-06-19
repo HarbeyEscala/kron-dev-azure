@@ -13,6 +13,14 @@ public interface IDeviceService
         Guid id,
         CancellationToken cancellationToken = default);
 
+    Task<DeviceApiKeyDto> GetApiKeyAsync(
+        Guid deviceId,
+        CancellationToken cancellationToken = default);
+
+    Task<DeviceApiKeyDto> RotateApiKeyAsync(
+        Guid deviceId,
+        CancellationToken cancellationToken = default);
+
     Task<Guid> CreateAsync(
         CreateDeviceRequestDto request,
         CancellationToken cancellationToken = default);

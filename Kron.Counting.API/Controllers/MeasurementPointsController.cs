@@ -1,11 +1,14 @@
 ﻿using Kron.Counting.Application.DTOs;
 using Kron.Counting.Application.Interfaces;
 using Kron.Counting.Domain.Entities;
+using Kron.Counting.Shared.Exceptions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Kron.Counting.API.Controllers;
 
 [ApiController]
+[Authorize(Roles = "Admin,Manager")]
 [Route("api/v1/measurement-points")]
 public sealed class MeasurementPointsController : ControllerBase
 {
@@ -58,7 +61,7 @@ public sealed class MeasurementPointsController : ControllerBase
 
         if (measurementPoint is null)
         {
-            return NotFound();
+            throw new NotFoundException("Measurement point not found.");
         }
 
         return Ok(measurementPoint);

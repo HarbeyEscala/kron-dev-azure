@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Kron.Counting.API.Controllers;
 
@@ -6,6 +7,7 @@ namespace Kron.Counting.API.Controllers;
 [Route("api/v1/[controller]")]
 public sealed class HealthController : ControllerBase
 {
+    [AllowAnonymous]
     [HttpGet]
     public IActionResult Get()
     {

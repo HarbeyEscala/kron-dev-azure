@@ -23,9 +23,6 @@ public sealed class DashboardController : ControllerBase
     {
         var result = await _dashboardService.GetSnapshotAsync(storeId, cancellationToken);
 
-        if (result is null)
-            return NotFound();
-
         return Ok(result);
     }
 

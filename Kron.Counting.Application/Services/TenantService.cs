@@ -3,6 +3,7 @@ using Kron.Counting.Application.DTOs.Responses;
 using Kron.Counting.Application.Interfaces;
 using Kron.Counting.Application.Mappings;
 using Kron.Counting.Domain.Entities;
+using Kron.Counting.Shared.Exceptions;
 
 namespace Kron.Counting.Application.Services;
 
@@ -62,7 +63,7 @@ public sealed class TenantService : ITenantService
                 cancellationToken);
 
         if (existing is not null)
-            throw new InvalidOperationException(
+            throw new ConflictException(
                 $"Tenant with code '{request.Code}' already exists.");
 
         var entity = new Tenant

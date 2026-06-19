@@ -4,7 +4,7 @@ namespace Kron.Counting.Application.Interfaces;
 
 public interface IDashboardService
 {
-    Task<DashboardSnapshotDto?> GetSnapshotAsync(
+    Task<DashboardSnapshotDto> GetSnapshotAsync(
         Guid storeId,
         CancellationToken cancellationToken = default);
 

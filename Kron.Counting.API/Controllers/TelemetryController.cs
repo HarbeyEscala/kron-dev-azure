@@ -1,8 +1,11 @@
 using Kron.Counting.Application.Interfaces;
 using Kron.Counting.Domain.Entities;
-using Microsoft.AspNetCore.Mvc;
-using System.Text;
 using Kron.Counting.Shared.Helpers;
+using Kron.Counting.Shared.Settings;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using System.Text;
+using System.Text.RegularExpressions;
 using Kron.Counting.Domain.Constants;
 
 namespace Kron.Counting.API.Controllers;
@@ -16,6 +19,9 @@ public sealed class TelemetryController : ControllerBase
     private static readonly Hpc015sGetsettingSessionManager _getsettingSessionManager = new();
     private readonly IDevicePayloadRepository _devicePayloadRepository;
     private readonly IDevicePayloadProcessor _devicePayloadProcessor;
+    private readonly ITelemetryDeviceResolver _telemetryDeviceResolver;
+    private readonly TelemetrySettings _telemetrySettings;
+    private readonly ILogger<TelemetryController> _logger;
 
     private const string DemoStoreId =
         "75380B27-528D-48F8-85A3-136AFE523F08";
@@ -24,12 +30,18 @@ public sealed class TelemetryController : ControllerBase
         IDeviceRepository deviceRepository,
         IDeviceReadingRepository deviceReadingRepository,
         IDevicePayloadRepository devicePayloadRepository,
-        IDevicePayloadProcessor devicePayloadProcessor)
+        IDevicePayloadProcessor devicePayloadProcessor,
+        ITelemetryDeviceResolver telemetryDeviceResolver,
+        IOptions<TelemetrySettings> telemetrySettings,
+        ILogger<TelemetryController> logger)
     {
         _deviceRepository = deviceRepository;
         _deviceReadingRepository = deviceReadingRepository;
         _devicePayloadRepository = devicePayloadRepository;
         _devicePayloadProcessor = devicePayloadProcessor;
+        _telemetryDeviceResolver = telemetryDeviceResolver;
+        _telemetrySettings = telemetrySettings.Value;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -50,6 +62,43 @@ public sealed class TelemetryController : ControllerBase
 
         string? serialNumber = null;
 
+        var apiKey = ReadApiKey();
+        Device? resolvedDevice = null;
+        var resolvedByApiKey = false;
+
+        if (!string.IsNullOrWhiteSpace(apiKey))
+        {
+            resolvedDevice =
+                await _telemetryDeviceResolver.ResolveByApiKeyAsync(
+                    apiKey,
+                    cancellationToken);
+
+            if (resolvedDevice is not null)
+            {
+                resolvedByApiKey = true;
+
+                _logger.LogInformation(
+                    "Telemetry device resolved by ApiKey");
+
+                await _deviceRepository.UpdateHeartbeatAsync(
+                    resolvedDevice.Id,
+                    DateTime.UtcNow,
+                    true,
+                    cancellationToken);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "Telemetry ApiKey present but did not resolve to a device");
+            }
+        }
+
+        if (!_telemetrySettings.AllowLegacyWithoutApiKey &&
+            !resolvedByApiKey)
+        {
+            return Content("result=", "text/plain");
+        }
+
         var sb = new StringBuilder();
 
         sb.AppendLine();
@@ -60,7 +109,7 @@ public sealed class TelemetryController : ControllerBase
         sb.AppendLine($"Remote IP     : {ip}");
         sb.AppendLine($"Method        : {Request.Method}");
         sb.AppendLine($"Path          : {Request.Path}");
-        sb.AppendLine($"QueryString   : {Request.QueryString}");
+        sb.AppendLine($"QueryString   : {RedactSensitiveValues(Request.QueryString.ToString())}");
         sb.AppendLine($"ContentType   : {Request.ContentType}");
         sb.AppendLine();
 
@@ -70,7 +119,8 @@ public sealed class TelemetryController : ControllerBase
         foreach (var header in Request.Headers)
         {
             sb.AppendLine(
-                $"{header.Key} = {header.Value}");
+                RedactSensitiveValues(
+                    $"{header.Key} = {header.Value}"));
         }
 
         sb.AppendLine();
@@ -83,7 +133,8 @@ public sealed class TelemetryController : ControllerBase
             foreach (var item in Request.Query)
             {
                 sb.AppendLine(
-                    $"{item.Key} = {item.Value}");
+                    RedactSensitiveValues(
+                        $"{item.Key} = {item.Value}"));
             }
 
             sb.AppendLine();
@@ -115,11 +166,28 @@ public sealed class TelemetryController : ControllerBase
 
                 if (cmd == "cache")
                 {
-                    var device =
-                        await _deviceRepository
-                            .GetByIpAddressAsync(
-                                ip!,
-                                cancellationToken);
+                    Device? device = null;
+
+                    if (resolvedByApiKey)
+                    {
+                        device = resolvedDevice;
+                    }
+                    else if (!string.IsNullOrWhiteSpace(ip))
+                    {
+                        if (_telemetrySettings.AllowLegacyIpIdentification)
+                        {
+                            device =
+                                await _deviceRepository
+                                    .GetByIpAddressAsync(
+                                        ip,
+                                        cancellationToken);
+                        }
+                        else
+                        {
+                            _logger.LogWarning(
+                                "Legacy IP identification disabled.");
+                        }
+                    }
 
                     if (device is not null)
                     {
@@ -294,7 +362,7 @@ public sealed class TelemetryController : ControllerBase
         }
 
 
-        if (!string.IsNullOrWhiteSpace(ip))
+        if (!resolvedByApiKey && !string.IsNullOrWhiteSpace(ip))
         {
             Device? device = null;
 
@@ -309,61 +377,77 @@ public sealed class TelemetryController : ControllerBase
 
             if (device is null)
             {
-                device =
-                    await _deviceRepository
-                        .GetByIpAddressAsync(
-                            ip,
-                            cancellationToken);
+                if (_telemetrySettings.AllowLegacyIpIdentification)
+                {
+                    device =
+                        await _deviceRepository
+                            .GetByIpAddressAsync(
+                                ip,
+                                cancellationToken);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Legacy IP identification disabled.");
+                }
             }
 
             if (device is null)
             {
-                sb.AppendLine(
-                    $"AUTO DISCOVERY -> SN {serialNumber}");
+                if (_telemetrySettings.AllowAutoDiscovery)
+                {
+                    sb.AppendLine(
+                        $"AUTO DISCOVERY -> SN {serialNumber}");
 
-                sb.AppendLine(
-                    $"AUTO DISCOVERY -> Creating {ip}");
+                    sb.AppendLine(
+                        $"AUTO DISCOVERY -> Creating {ip}");
 
-                await _deviceRepository.CreateAsync(
-                    new Device
-                    {
-                        Id = Guid.NewGuid(),
+                    await _deviceRepository.CreateAsync(
+                        new Device
+                        {
+                            Id = Guid.NewGuid(),
 
-                        StoreId = null,
+                            StoreId = null,
 
-                        SerialNumber =
-                            serialNumber ?? $"AUTO-{ip}",
+                            SerialNumber =
+                                serialNumber ?? $"AUTO-{ip}",
 
-                        Name =
-                            $"HP015-{serialNumber ?? ip}",
+                            Name =
+                                $"HP015-{serialNumber ?? ip}",
 
-                        ProvisioningStatus = "Pending",
+                            ProvisioningStatus = "Pending",
 
-                        DeviceType =
-                            "HP015",
+                            DeviceType =
+                                "HP015",
 
-                        ApiKey =
-                            Guid.NewGuid().ToString(),
+                            ApiKey =
+                                Guid.NewGuid().ToString(),
 
-                        IpAddress = ip,
+                            IpAddress = ip,
 
-                        IsOnline = true,
-                        IsActive = true,
-                        IsDeleted = false,
+                            IsOnline = true,
+                            IsActive = true,
+                            IsDeleted = false,
 
-                        LastTotalIn = 0,
-                        LastTotalOut = 0,
+                            LastTotalIn = 0,
+                            LastTotalOut = 0,
 
-                        CreatedAtUtc =
-                            DateTime.UtcNow,
+                            CreatedAtUtc =
+                                DateTime.UtcNow,
 
-                        LastSeenAtUtc =
-                            DateTime.UtcNow
-                    },
-                    cancellationToken);
+                            LastSeenAtUtc =
+                                DateTime.UtcNow
+                        },
+                        cancellationToken);
 
-                sb.AppendLine(
-                    "AUTO DISCOVERY -> CREATED");
+                    sb.AppendLine(
+                        "AUTO DISCOVERY -> CREATED");
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Auto discovery disabled. Device not found.");
+                }
             }
             else
             {
@@ -523,5 +607,44 @@ public sealed class TelemetryController : ControllerBase
         return Content(
             responseBody,
             "text/plain");
+    }
+
+    private static string RedactSensitiveValues(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+            return input;
+
+        var result = Regex.Replace(
+            input,
+            @"(?i)(apiKey\s*=\s*)([^\s&]*)",
+            "$1***");
+
+        result = Regex.Replace(
+            result,
+            @"(?i)(X-Device-Api-Key\s*[:=]\s*)([^\s&,]*)",
+            "$1***");
+
+        return result;
+    }
+
+    private string? ReadApiKey()
+    {
+        if (Request.Headers.TryGetValue(
+                "X-Device-Api-Key",
+                out var headerValue) &&
+            !string.IsNullOrWhiteSpace(headerValue))
+        {
+            return headerValue.ToString();
+        }
+
+        if (Request.Query.TryGetValue(
+                "apiKey",
+                out var queryValue) &&
+            !string.IsNullOrWhiteSpace(queryValue))
+        {
+            return queryValue.ToString();
+        }
+
+        return null;
     }
 }

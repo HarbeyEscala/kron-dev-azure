@@ -1,11 +1,13 @@
 using Kron.Counting.Application.DTOs.Requests;
 using Kron.Counting.Application.Interfaces;
 using Kron.Counting.Domain.Entities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Kron.Counting.API.Controllers;
 
 [ApiController]
+[Authorize(Roles = "Admin")]
 [Route("api/v1/notifications")]
 public sealed class NotificationsController : ControllerBase
 {
