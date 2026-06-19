@@ -195,8 +195,8 @@ public sealed class Hpc015sGetsettingRequest
         public byte RespondingType { get; set; } = 0x04;
         public byte CommandType { get; set; } = 0x03;
         public byte Speed { get; set; } = 0x00;
-        public byte RecordingCycle { get; set; } = 0x01; // ciclo de envio
-        public byte UploadCycle { get; set; } = 0x01;  // envios al backend
+        public byte RecordingCycle { get; set; } = 0x1E; // ciclo de envio
+        public byte UploadCycle { get; set; } = 0x1E;  // envios al backend
         public byte FixedTime { get; set; } = 0x00;
         public byte[] UploadHours { get; set; } = new byte[4];
         public byte[] UploadMinutes { get; set; } = new byte[4];
