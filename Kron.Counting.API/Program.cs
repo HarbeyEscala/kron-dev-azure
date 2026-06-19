@@ -34,17 +34,27 @@ var firebaseFile =
         "Secrets",
         "firebase-admin.json");
 
-if (File.Exists(firebaseFile))
+var firebaseJson =
+    builder.Configuration["Firebase:Credentials"];
+
+if (!string.IsNullOrWhiteSpace(firebaseJson))
 {
     FirebaseApp.Create(
         new AppOptions
         {
             Credential =
-                GoogleCredential
-                    .FromFile(firebaseFile)
+                GoogleCredential.FromJson(firebaseJson)
         });
 }
-
+else if (File.Exists(firebaseFile))
+{
+    FirebaseApp.Create(
+        new AppOptions
+        {
+            Credential =
+                GoogleCredential.FromFile(firebaseFile)
+        });
+}
 #region Settings
 
 builder.Services.Configure<DatabaseSettings>(
@@ -105,15 +115,19 @@ builder.Services
         .ScanIn(typeof(MigrationRunnerService).Assembly)
         .For.Migrations());
 
-if (!builder.Environment.IsProduction())
-{
-    builder.Services.AddHostedService<MigrationRunnerService>();
-}
+//if (!builder.Environment.IsProduction())
+//{
+//    builder.Services.AddHostedService<MigrationRunnerService>();
+//}
+
+builder.Services.AddHostedService<MigrationRunnerService>();
+
 builder.Services.AddHostedService<PayloadReprocessorService>();
-if (!builder.Environment.IsProduction())
-{
-    builder.Services.AddHostedService<HourlyMetricsMaterializerBackgroundService>();
-}
+//if (!builder.Environment.IsProduction())
+//{
+//    builder.Services.AddHostedService<HourlyMetricsMaterializerBackgroundService>();
+//}
+builder.Services.AddHostedService<HourlyMetricsMaterializerBackgroundService>();
 builder.Services.AddHostedService<DailyMetricsMaterializerBackgroundService>();
 builder.Services.AddHostedService<MonthlyMetricsMaterializerBackgroundService>();
 builder.Services.AddHostedService<OfflineAlertDetectorBackgroundService>();

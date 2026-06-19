@@ -9,7 +9,7 @@ public sealed class OfflineAlertDetectorBackgroundService
     : BackgroundService
 {
     private static readonly TimeSpan Interval =
-        TimeSpan.FromMinutes(5);
+        TimeSpan.FromHours(2);
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<OfflineAlertDetectorBackgroundService> _logger;

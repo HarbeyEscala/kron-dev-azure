@@ -92,7 +92,7 @@ public sealed class PayloadReprocessorService
             }
 
             await Task.Delay(
-                TimeSpan.FromMinutes(1),
+                TimeSpan.FromMinutes(15),
                 stoppingToken);
         }
     }

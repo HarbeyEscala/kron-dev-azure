@@ -42,7 +42,7 @@ public sealed class HourlyMetricsMaterializerBackgroundService
             }
 
             await Task.Delay(
-                TimeSpan.FromMinutes(5),
+                TimeSpan.FromMinutes(30),
                 stoppingToken);
         }
     }

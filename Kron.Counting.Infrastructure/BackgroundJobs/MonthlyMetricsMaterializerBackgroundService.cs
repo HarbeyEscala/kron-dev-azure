@@ -42,7 +42,7 @@ public sealed class MonthlyMetricsMaterializerBackgroundService
             }
 
             await Task.Delay(
-                TimeSpan.FromMinutes(15),
+                TimeSpan.FromHours(12),
                 stoppingToken);
         }
     }
