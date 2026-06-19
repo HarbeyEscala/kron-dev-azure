@@ -42,8 +42,8 @@ public sealed class DailyMetricsMaterializerBackgroundService
             }
 
             await Task.Delay(
-                TimeSpan.FromMinutes(1),
+                TimeSpan.FromHours(4),
                 stoppingToken);
-        }
+        }   
     }
 }
