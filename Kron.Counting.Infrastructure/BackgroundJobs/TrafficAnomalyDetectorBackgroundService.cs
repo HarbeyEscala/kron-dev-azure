@@ -9,7 +9,7 @@ public sealed class TrafficAnomalyDetectorBackgroundService
     : BackgroundService
 {
     private static readonly TimeSpan Interval =
-        TimeSpan.FromMinutes(30);
+        TimeSpan.FromHours(2);
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<TrafficAnomalyDetectorBackgroundService> _logger;

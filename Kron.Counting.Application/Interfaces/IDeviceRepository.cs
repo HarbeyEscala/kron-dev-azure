@@ -64,4 +64,15 @@ public interface IDeviceRepository
     Task<IEnumerable<Device>> GetAllAsync(
         CancellationToken cancellationToken = default);
 
+    Task UpdateTelemetryStatusAsync(
+        Guid deviceId,
+        DateTime lastSeenAtUtc,
+        DateTime lastPayloadUtc,
+        bool isOnline,
+        string? ipAddress,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<DeviceAlertSnapshot>>
+        GetAlertSnapshotsAsync();
+
 }

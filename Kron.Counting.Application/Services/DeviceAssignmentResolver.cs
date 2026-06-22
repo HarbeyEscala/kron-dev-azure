@@ -7,14 +7,11 @@ public sealed class DeviceAssignmentResolver
     : IDeviceAssignmentResolver
 {
     private readonly IDeviceAssignmentRepository _deviceAssignmentRepository;
-    private readonly IMeasurementPointRepository _measurementPointRepository;
 
     public DeviceAssignmentResolver(
-        IDeviceAssignmentRepository deviceAssignmentRepository,
-        IMeasurementPointRepository measurementPointRepository)
+        IDeviceAssignmentRepository deviceAssignmentRepository)
     {
         _deviceAssignmentRepository = deviceAssignmentRepository;
-        _measurementPointRepository = measurementPointRepository;
     }
 
     public async Task<DeviceAssignmentContext?> ResolveAsync(
@@ -22,30 +19,21 @@ public sealed class DeviceAssignmentResolver
         DateTime timestampUtc,
         CancellationToken cancellationToken = default)
     {
-        var assignment =
-            await _deviceAssignmentRepository.GetActiveAtAsync(
+        var context =
+            await _deviceAssignmentRepository.GetAssignmentContextAsync(
                 deviceId,
                 timestampUtc);
 
-        if (assignment is null)
-        {
-            return null;
-        }
-
-        var measurementPoint =
-            await _measurementPointRepository.GetByIdAsync(
-                assignment.MeasurementPointId);
-
-        if (measurementPoint is null)
+        if (context is null)
         {
             return null;
         }
 
         return new DeviceAssignmentContext
         {
-            DeviceAssignmentId = assignment.Id,
-            MeasurementPointId = measurementPoint.Id,
-            StoreId = measurementPoint.StoreId
+            DeviceAssignmentId = context.DeviceAssignmentId,
+            MeasurementPointId = context.MeasurementPointId,
+            StoreId = context.StoreId
         };
     }
 }

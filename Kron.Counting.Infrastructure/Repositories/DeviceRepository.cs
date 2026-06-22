@@ -373,15 +373,40 @@ public sealed class DeviceRepository : IDeviceRepository
         CancellationToken cancellationToken = default)
     {
         const string sql = """
-            UPDATE dbo.Devices
-            SET
+        MERGE dbo.DeviceTelemetryStatus AS target
+        USING
+        (
+            SELECT @DeviceId AS DeviceId
+        ) AS source
+        ON target.DeviceId = source.DeviceId
+
+        WHEN MATCHED THEN
+            UPDATE SET
                 LastSeenAtUtc = @LastSeenAtUtc,
                 IsOnline = @IsOnline,
-                IpAddress = COALESCE(@IpAddress, IpAddress),
+                IpAddress = COALESCE(@IpAddress, target.IpAddress),
                 UpdatedAtUtc = @UpdatedAtUtc
-            WHERE Id = @Id
-              AND IsDeleted = 0;
-        """;
+
+        WHEN NOT MATCHED THEN
+            INSERT
+            (
+                DeviceId,
+                LastSeenAtUtc,
+                LastPayloadUtc,
+                IpAddress,
+                IsOnline,
+                UpdatedAtUtc
+            )
+            VALUES
+            (
+                @DeviceId,
+                @LastSeenAtUtc,
+                NULL,
+                @IpAddress,
+                @IsOnline,
+                @UpdatedAtUtc
+            );
+    """;
 
         using var connection = _connectionFactory.CreateConnection();
 
@@ -389,8 +414,70 @@ public sealed class DeviceRepository : IDeviceRepository
             sql,
             new
             {
-                Id = id,
+                DeviceId = id,
                 LastSeenAtUtc = lastSeenAtUtc,
+                IsOnline = isOnline,
+                IpAddress = ipAddress,
+                UpdatedAtUtc = DateTime.UtcNow
+            });
+    }
+
+    public async Task UpdateTelemetryStatusAsync(
+        Guid deviceId,
+        DateTime lastSeenAtUtc,
+        DateTime lastPayloadUtc,
+        bool isOnline,
+        string? ipAddress,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+        MERGE dbo.DeviceTelemetryStatus AS target
+        USING
+        (
+            SELECT
+                @DeviceId AS DeviceId
+        ) AS source
+        ON target.DeviceId = source.DeviceId
+
+        WHEN MATCHED THEN
+            UPDATE SET
+                LastSeenAtUtc = @LastSeenAtUtc,
+                LastPayloadUtc = @LastPayloadUtc,
+                IsOnline = @IsOnline,
+                IpAddress = COALESCE(@IpAddress, target.IpAddress),
+                UpdatedAtUtc = @UpdatedAtUtc
+
+        WHEN NOT MATCHED THEN
+            INSERT
+            (
+                DeviceId,
+                LastSeenAtUtc,
+                LastPayloadUtc,
+                IpAddress,
+                IsOnline,
+                UpdatedAtUtc
+            )
+            VALUES
+            (
+                @DeviceId,
+                @LastSeenAtUtc,
+                @LastPayloadUtc,
+                @IpAddress,
+                @IsOnline,
+                @UpdatedAtUtc
+            );
+    """;
+
+        using var connection =
+            _connectionFactory.CreateConnection();
+
+        await connection.ExecuteAsync(
+            sql,
+            new
+            {
+                DeviceId = deviceId,
+                LastSeenAtUtc = lastSeenAtUtc,
+                LastPayloadUtc = lastPayloadUtc,
                 IsOnline = isOnline,
                 IpAddress = ipAddress,
                 UpdatedAtUtc = DateTime.UtcNow
@@ -548,5 +635,41 @@ public sealed class DeviceRepository : IDeviceRepository
 
         return await connection.QueryAsync<Device>(
             sql);
+    }
+
+    public async Task<IReadOnlyList<DeviceAlertSnapshot>>
+        GetAlertSnapshotsAsync()
+    {
+        const string sql =
+            """
+        SELECT
+            d.Id              AS DeviceId,
+            d.TenantId,
+            d.Name,
+            d.IsActive,
+            d.IsDeleted,
+
+            ISNULL(ts.IsOnline, 0)
+                AS IsOnline,
+
+            ts.LastSeenAtUtc,
+            ts.LastPayloadUtc
+
+        FROM dbo.Devices d
+
+        LEFT JOIN dbo.DeviceTelemetryStatus ts
+            ON ts.DeviceId = d.Id
+
+        WHERE d.IsDeleted = 0
+        """;
+
+        using var connection =
+            _connectionFactory.CreateConnection();
+
+        var result =
+            await connection.QueryAsync<DeviceAlertSnapshot>(
+                sql);
+
+        return result.ToList();
     }
 }

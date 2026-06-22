@@ -1,4 +1,5 @@
 ﻿using Kron.Counting.Domain.Entities;
+using Kron.Counting.Application.DTOs;
 
 namespace Kron.Counting.Application.Interfaces;
 
@@ -18,6 +19,10 @@ public interface IDeviceAssignmentRepository
         int baselineTotalOut);
 
     Task<DeviceAssignment?> GetActiveAtAsync(
+        Guid deviceId,
+        DateTime timestampUtc);
+
+    Task<DeviceAssignmentLookup?> GetAssignmentContextAsync(
         Guid deviceId,
         DateTime timestampUtc);
 }

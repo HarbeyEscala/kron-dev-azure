@@ -1,4 +1,5 @@
 ﻿using Dapper;
+using Kron.Counting.Application.DTOs;
 using Kron.Counting.Application.Interfaces;
 using Kron.Counting.Domain.Entities;
 using Kron.Counting.Infrastructure.Data;
@@ -219,6 +220,41 @@ public sealed class DeviceAssignmentRepository
             _connectionFactory.CreateConnection();
 
         return await connection.QuerySingleOrDefaultAsync<DeviceAssignment>(
+            sql,
+            new
+            {
+                DeviceId = deviceId,
+                TimestampUtc = timestampUtc
+            });
+    }
+
+    public async Task<DeviceAssignmentLookup?> GetAssignmentContextAsync(
+        Guid deviceId,
+        DateTime timestampUtc)
+    {
+        const string sql =
+            """
+        SELECT TOP 1
+            da.Id AS DeviceAssignmentId,
+            mp.Id AS MeasurementPointId,
+            mp.StoreId
+        FROM dbo.DeviceAssignments da
+        INNER JOIN dbo.MeasurementPoints mp
+            ON mp.Id = da.MeasurementPointId
+        WHERE da.DeviceId = @DeviceId
+        AND da.AssignedAtUtc <= @TimestampUtc
+        AND
+        (
+            da.UnassignedAtUtc IS NULL
+            OR da.UnassignedAtUtc > @TimestampUtc
+        )
+        ORDER BY da.AssignedAtUtc DESC
+        """;
+
+        using var connection =
+            _connectionFactory.CreateConnection();
+
+        return await connection.QuerySingleOrDefaultAsync<DeviceAssignmentLookup>(
             sql,
             new
             {

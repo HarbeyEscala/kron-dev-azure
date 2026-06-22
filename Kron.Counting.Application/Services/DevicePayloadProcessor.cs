@@ -74,45 +74,32 @@ public sealed class DevicePayloadProcessor
                 DateTime.UtcNow
         };
 
-        var exists =
-            await _deviceReadingRepository
-                .ExistsAsync(
-                    reading.DeviceId,
-                    reading.ReadingTimestampUtc,
-                    reading.PeopleIn,
-                    reading.PeopleOut);
-
-            Console.WriteLine();
-            Console.WriteLine("PAYLOAD PROCESSED");
-            Console.WriteLine("--------------------------------");
-            Console.WriteLine($"PayloadId = {payload.Id}");
-            Console.WriteLine($"Status    = {PayloadStatuses.Saved}");
-
-        if (exists)
+        try
         {
-            await _devicePayloadRepository
-                .UpdateStatusAsync(
-                    payload.Id,
-                    PayloadStatuses.Duplicate);
+            await _deviceReadingRepository.CreateAsync(
+                reading,
+                cancellationToken);
+        }
+        catch(Exception ex)
+{
             Console.WriteLine();
-            Console.WriteLine("DUPLICATE READING");
+            Console.WriteLine("INSERT FAILED");
             Console.WriteLine("--------------------------------");
-            Console.WriteLine(
-                $"{reading.ReadingTimestampUtc:yyyy-MM-dd HH:mm:ss} | " +
-                $"IN={reading.PeopleIn} | " +
-                $"OUT={reading.PeopleOut}");
+            Console.WriteLine(ex.Message);
+
+            await _devicePayloadRepository.UpdateStatusAsync(
+                payload.Id,
+                PayloadStatuses.Duplicate);
 
             return;
         }
 
-        await _deviceReadingRepository
-            .CreateAsync(
-                reading,
-                cancellationToken);
-
-        await _deviceRepository.UpdateLastPayloadAsync(
+        await _deviceRepository.UpdateTelemetryStatusAsync(
             payload.DeviceId,
+            DateTime.UtcNow,
             parsed.TimestampUtc,
+            true,
+            null,
             cancellationToken);
 
         await _devicePayloadRepository

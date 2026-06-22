@@ -9,7 +9,7 @@ public sealed class SilentAlertDetectorBackgroundService
     : BackgroundService
 {
     private static readonly TimeSpan Interval =
-        TimeSpan.FromMinutes(1);
+        TimeSpan.FromHours(1);
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<SilentAlertDetectorBackgroundService> _logger;
